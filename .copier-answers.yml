@@ -1,0 +1,16 @@
+# Changes here will be overwritten by Copier. Do not edit by hand.
+_commit: v0.9.0
+_src_path: https://github.com/sandrogekeler/AllesSandro.git
+aislop: true
+claude_action: true
+default_branch: main
+description: A screen recorder for macOS and Windows that saves GIFs
+kind: other
+languages: []
+license: none
+owner: sandrogekeler
+project_name: Inb
+public: true
+release_notes: false
+repo_name: Inb
+tracking: github-issues
