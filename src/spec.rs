@@ -73,3 +73,38 @@ pub const GROW: Duration = Duration::from_millis(600);
 pub const FADE: Duration = Duration::from_millis(350);
 /// After Stop the circle shrinks back into the bar.
 pub const SHRINK: Duration = Duration::from_millis(450);
+
+/// Fill of the hovered fps menu row: white at 10%.
+pub const HOVER: Rgba = Rgba(0xff, 0xff, 0xff, 26);
+/// Extra corner radius of the fps menu over `RADIUS`.
+pub const MENU_EXTRA_RADIUS: f64 = 2.0;
+/// Space between a menu row's edge and its text or check mark.
+pub const MENU_TEXT_PAD: f64 = 10.0;
+/// Width of the outline around the bar and the menu.
+pub const OUTLINE: f64 = 1.0;
+
+/// The record dot and the ring around it.
+pub const DOT_SIZE: f64 = 16.0;
+pub const DOT_RING: f64 = 2.0;
+/// The small dot before the time while recording.
+pub const REC_DOT_SIZE: f64 = 8.0;
+/// Size and stroke of the close cross.
+pub const CROSS_SIZE: f64 = 12.0;
+pub const CROSS_STROKE: f64 = 1.6;
+/// The fps chip's chevron: distance from the chip's right edge, width, height.
+pub const CHEVRON_INSET: f64 = 7.0;
+pub const CHEVRON_W: f64 = 7.0;
+pub const CHEVRON_H: f64 = 4.0;
+/// Left padding of the chip's text.
+pub const CHIP_TEXT_PAD: f64 = 9.0;
+/// The check mark in the Done state and the fps menu.
+pub const CHECK_W: f64 = 10.0;
+pub const CHECK_H: f64 = 8.0;
+/// Space between an icon and the text after it.
+pub const ICON_GAP: f64 = 6.0;
+/// The square in the Stop button.
+pub const STOP_ICON: f64 = 9.0;
+/// The progress line along the bar's bottom edge while encoding.
+pub const PROGRESS_H: f64 = 2.0;
+/// Extra horizontal ink that fakes a bold weight, in points.
+pub const BOLD_SMEAR: f64 = 0.4;
