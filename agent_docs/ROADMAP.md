@@ -5,8 +5,9 @@ file says what is next and why. Unchecked items are not done.
 
 ## Now
 
-- [ ] Choose the stack for one codebase on macOS and Windows, and record
-      why in `agent_docs/DEPENDENCIES.md`.
+- [ ] Switch the template answers to Rust once AllesSandro has it
+      (`copier update --data 'languages=[rust]'`).
+- [ ] Open the frame with its buttons, and move and resize it.
 
 ## Next
 
