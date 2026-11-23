@@ -21,6 +21,10 @@ file says what is next and why. Unchecked items are not done.
 ## Later
 
 - [ ] Trim a recording before saving it.
+- [ ] Linux. X11 works like the other two systems. On Wayland an app cannot
+      place its own windows, and GNOME lacks the layer-shell protocol that
+      allows it on KDE and Sway, so the frame needs another design there.
+      Capture goes through the xdg-desktop-portal screen-share picker.
 
 ## Ideas
 

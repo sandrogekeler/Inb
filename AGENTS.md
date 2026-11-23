@@ -31,6 +31,9 @@ security checklists and the dependency inventory.
   corner. Recording crops the display to the inside of the frame.
 - Capture uses each system's own API: ScreenCaptureKit on macOS, DXGI Desktop
   Duplication on Windows (Windows.Graphics.Capture draws a yellow border).
+- Code for one system lives in one capture module and one window module per
+  system. The rest of Inb calls them and never names a system, so Linux can
+  be added later.
 
 ## Build & dev commands
 
