@@ -25,12 +25,13 @@ not load that directory itself reads `working.md`, `writing.md` and
     control sits on the bar and the fps menu, for drawing and hit tests alike.
   - `session.rs`: the recording state machine. Events in, effects out.
   - `draw.rs`: a pixmap per window. `image.rs`: crop and scale a capture.
-    `encode.rs`: spool frames, write the GIF. `frame.rs`: one capture.
+    `encode.rs`: spool frames to disk, write the GIF. `frame.rs`: one capture.
   - `platform/`: `mac/` and `win/`, each with `window`, `capture`,
     `clipboard` and `files` exposing the same functions.
 - `src/main.rs`, `src/app.rs`, `src/app/recording.rs`: the binary, the event
   loop and the effects (capture, encode, copy, save threads).
-- `examples/`: `capture` and `clipboard` try one platform part on its own.
+- `examples/`: `capture` and `clipboard` try one platform part on its own;
+  `encode` encodes a synthetic 30 s recording.
 - `docs/testing.md`: how to try a pull request on Windows and macOS.
 - `agent_docs/`: the roadmap, the health and security checklists and the
   dependency inventory.
