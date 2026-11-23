@@ -1,5 +1,7 @@
 ---
 paths:
+  - "**/Cargo.toml"
+  - "Cargo.lock"
   - "agent_docs/DEPENDENCIES.md"
 ---
 
