@@ -19,3 +19,6 @@ CLAUDE.local.md
 
 # Bytecode from the .claude/ health runner, which every project runs
 __pycache__/
+
+# Cargo
+target/

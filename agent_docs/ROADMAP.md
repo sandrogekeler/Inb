@@ -5,8 +5,11 @@ file says what is next and why. Unchecked items are not done.
 
 ## Now
 
-- [ ] Switch the template answers to Rust once AllesSandro has it
-      (`copier update --data 'languages=[rust]'`).
+- [ ] With the first `Cargo.toml`: add `cargo fmt --all --check`,
+      `cargo clippy --all-targets -- -D warnings` and `cargo test` to
+      `.claude/suite.json`, a `cargo` entry to `.github/dependabot.yml`, and the
+      cargo commands to `AGENTS.md`. Those files are seeded, so the template's
+      Rust answer did not change them.
 - [ ] Open the frame with its buttons, and move and resize it.
 
 ## Next
