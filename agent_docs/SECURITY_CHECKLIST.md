@@ -13,8 +13,10 @@ The threat surface of this project and how each part is held. Pair with
 ## S1. Inputs
 
 - [ ] The screen-recording permission is asked for only when recording starts.
-- [ ] Inputs (save paths, settings files) are listed here once the stack is
-      chosen, each with how it is validated.
+- [ ] Inb reads no settings or input files. It writes two places only: a new
+      GIF per recording under the temp folder (`Inb/`), and "Inb N.gif" in
+      the Desktop folder on Save, never overwriting an existing file.
+- [ ] Every `unsafe` block states why it is sound (`// SAFETY:`).
 
 ## S2. Credentials and secrets
 

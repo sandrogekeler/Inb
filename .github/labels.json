@@ -52,6 +52,16 @@
       "description": "Build, packaging, or release process."
     },
     {
+      "name": "area:capture",
+      "color": "d4c5f9",
+      "description": "Screen capture on macOS and Windows."
+    },
+    {
+      "name": "area:gif",
+      "color": "fad8c7",
+      "description": "GIF encoding, the clipboard and saving."
+    },
+    {
       "name": "area:ui",
       "color": "aed9e0",
       "description": "User-facing interface work."

@@ -18,9 +18,22 @@ not load that directory itself reads `working.md`, `writing.md` and
 
 ## Project structure
 
-No application code yet: the tree holds only the files the template seeded.
-`agent_docs/` holds these instructions' companions: the roadmap, the health and
-security checklists and the dependency inventory.
+- `src/lib.rs`: everything below. Pure modules build and test on Linux too.
+  - `spec.rs`: the settled design's colours, sizes and timings. Every value
+    the drawing uses lives here.
+  - `geometry.rs`: where each window goes, frame drags. `bar.rs`: where each
+    control sits on the bar and the fps menu, for drawing and hit tests alike.
+  - `session.rs`: the recording state machine. Events in, effects out.
+  - `draw.rs`: a pixmap per window. `image.rs`: crop and scale a capture.
+    `encode.rs`: spool frames, write the GIF. `frame.rs`: one capture.
+  - `platform/`: `mac/` and `win/`, each with `window`, `capture`,
+    `clipboard` and `files` exposing the same functions.
+- `src/main.rs`, `src/app.rs`, `src/app/recording.rs`: the binary, the event
+  loop and the effects (capture, encode, copy, save threads).
+- `examples/`: `capture` and `clipboard` try one platform part on its own.
+- `docs/testing.md`: how to try a pull request on Windows and macOS.
+- `agent_docs/`: the roadmap, the health and security checklists and the
+  dependency inventory.
 
 ## Architecture rules
 
@@ -31,18 +44,28 @@ security checklists and the dependency inventory.
   corner. Recording crops the display to the inside of the frame.
 - Capture uses each system's own API: ScreenCaptureKit on macOS, DXGI Desktop
   Duplication on Windows (Windows.Graphics.Capture draws a yellow border).
-- Code for one system lives in one capture module and one window module per
-  system. The rest of Inb calls them and never names a system, so Linux can
-  be added later.
+- Code for one system lives in `src/platform/<system>/`. The rest of Inb
+  calls it through `platform::sys` and never names a system, so Linux can be
+  added later. Only `platform/` and `app` use `cfg(target_os)`.
+- Coordinates are logical points, desktop-relative, until `draw` and
+  `platform` turn them into physical pixels. The GIF is made at point size.
+- Every `unsafe` block carries a `// SAFETY:` comment.
 
 ## Build & dev commands
 
 ```sh
+cargo run                        # Inb itself, on macOS or Windows
+cargo test                       # unit tests, also on Linux
+cargo clippy --all-targets --target x86_64-pc-windows-msvc -- -D warnings
+cargo clippy --all-targets --target aarch64-apple-darwin -- -D warnings
 python3 .claude/suite-check.py   # every health check in .claude/suite.json
 ```
 
-Run the last one before calling a task done. A check it reports as skipped did
-not pass.
+The two cross-target clippy runs check platform code from any system (add the
+targets with `rustup target add`); they compile without linking. CI
+(`.github/workflows/ci.yml`) builds, lints and tests on `windows-latest` and
+`macos-latest` and uploads both builds. Run the last command before calling a
+task done. A check it reports as skipped did not pass.
 
 ## Task tracking
 Work is tracked in GitHub Issues. Every issue carries a `type:`, an `area:` and

@@ -5,18 +5,21 @@ file says what is next and why. Unchecked items are not done.
 
 ## Now
 
-- [ ] In the pull request that adds the first `Cargo.toml`: run
-      `copier update --data 'languages=[rust]'` (CodeQL fails on a tree with
-      no Rust code), and add `cargo fmt --all --check`,
-      `cargo clippy --all-targets -- -D warnings` and `cargo test` to
-      `.claude/suite.json`, a `cargo` entry to `.github/dependabot.yml` and the
-      cargo commands to `AGENTS.md`. Those three files are seeded, so the
-      template answer does not change them.
-- [ ] Open the frame with its buttons, and move and resize it.
+The first build, one issue per part. Each can be built and tried on its own:
+
+- [ ] Draw the frame, the bar and the fps menu (#8).
+- [ ] Show the windows on Windows (#9) and macOS (#10).
+- [ ] Record the area on Windows (#11) and macOS (#12).
+- [ ] Small, smooth GIFs from long recordings (#13).
+- [ ] Copy the GIF to the clipboard and save it (#14).
 
 ## Next
 
-- [ ] Record a part of the screen and save it as a GIF.
+- [ ] Package Inb as an app: a signed `.app` on macOS (the Screen Recording
+      permission then belongs to Inb, not the terminal) and an `.exe` with an
+      icon and version info on Windows.
+- [ ] Set the budgets in the health checklist from measurements: startup,
+      memory while recording, GIF size per second.
 
 ## Later
 
