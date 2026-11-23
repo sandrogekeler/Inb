@@ -12,7 +12,9 @@ not load that directory itself reads `working.md`, `writing.md` and
 `simplicity.md` there before starting.
 
 ## Stack
-- Not chosen yet. Choosing it is the first item in `agent_docs/ROADMAP.md`.
+- Rust, one codebase for macOS 13+ and Windows 10 version 2004+. No web view.
+- Crates and why: `agent_docs/DEPENDENCIES.md`. Architecture and the options
+  not taken: https://claude.ai/artifact/59JG4rGJEhVBsCVjkDXYmy
 
 ## Project structure
 
@@ -24,6 +26,11 @@ security checklists and the dependency inventory.
 
 - One codebase runs on macOS and Windows.
 - Inb only records what the user selects, and only while recording.
+- No Inb window is ever inside the recorded area. The frame is four edge
+  windows around it, and the buttons are attached outside its bottom-right
+  corner. Recording crops the display to the inside of the frame.
+- Capture uses each system's own API: ScreenCaptureKit on macOS, DXGI Desktop
+  Duplication on Windows (Windows.Graphics.Capture draws a yellow border).
 
 ## Build & dev commands
 
