@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Inb</title>
+<meta name="description" content="Record part of your screen as a GIF. For Windows and macOS.">
+<link rel="preload" href="fonts/familjen-grotesk.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/hanken-grotesk.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+@font-face { font-family: "Familjen Grotesk"; src: url("fonts/familjen-grotesk.woff2") format("woff2"); font-weight: 500 700; font-display: swap; }
+@font-face { font-family: "Hanken Grotesk"; src: url("fonts/hanken-grotesk.woff2") format("woff2"); font-weight: 400 600; font-display: swap; }
+/* Layout: one section, text and downloads on the left, the app recording on the right; stacks on phones.
+   Fonts: Familjen Grotesk for the wordmark, Hanken Grotesk for text, both OFL and not on the AI-default list. */
+:root {
+  --ground: #ececee;
+  --ink: #1c1c1e;
+  --muted: #5d5d63;
+  --line: #d2d2d6;
+  --button: #1c1c1e;
+  --button-ink: #f5f5f7;
+  --desk: #d7d8dc;
+  --window: #fbfbfc;
+  --window-bar: #eeeef0;
+  --window-line: #c9c9ce;
+  --shape: #8e8e96;
+  --display: "Familjen Grotesk", "Hanken Grotesk", "Segoe UI", system-ui, sans-serif;
+  --text: "Hanken Grotesk", "Segoe UI", system-ui, sans-serif;
+
+  /* Inb's own colours, from src/spec.rs. The same in both themes. */
+  --inb-bg: #1c1c1e;
+  --inb-fg: #f5f5f7;
+  --inb-muted: #a1a1a6;
+  --inb-chip: rgba(255, 255, 255, 0.1);
+  --inb-edge: rgba(0, 0, 0, 0.55);
+  --inb-dot: #ff453a;
+  --inb-rec: #e5342b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #141416; --ink: #f2f2f4; --muted: #a3a3aa; --line: #2c2c30;
+    --button: #f2f2f4; --button-ink: #141416;
+    --desk: #303035; --window: #46464c; --window-bar: #3c3c42; --window-line: #56565d; --shape: #8a8a92;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #141416; --ink: #f2f2f4; --muted: #a3a3aa; --line: #2c2c30;
+  --button: #f2f2f4; --button-ink: #141416;
+  --desk: #303035; --window: #46464c; --window-bar: #3c3c42; --window-line: #56565d; --shape: #8a8a92;
+  color-scheme: dark;
+}
+
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font: 400 17px/1.5 var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+a:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 3px; }
+
+.page {
+  min-height: 100%;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  align-items: center;
+  gap: clamp(32px, 6vw, 96px);
+  max-width: 1240px;
+  margin: 0 auto;
+  padding-block: 48px;
+  padding-left: max(24px, env(safe-area-inset-left, 0px));
+  padding-right: max(24px, env(safe-area-inset-right, 0px));
+}
+
+.info { display: flex; flex-direction: column; gap: 32px; min-width: 0; }
+.wordmark {
+  margin: 0;
+  font: 600 clamp(72px, 9vw, 120px)/0.9 var(--display);
+  letter-spacing: -0.04em;
+}
+.lede {
+  margin: -12px 0 0;
+  font-size: clamp(20px, 2vw, 24px);
+  line-height: 1.3;
+  text-wrap: balance;
+}
+
+.downloads { display: flex; flex-wrap: wrap; gap: 10px; }
+.dl {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 12px 18px;
+  border-radius: 3px;
+  background: var(--button);
+  color: var(--button-ink);
+  font: 600 16px/1 var(--text);
+  text-decoration: none;
+}
+.dl svg { width: 18px; height: 18px; flex: none; }
+.dl.secondary { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--line); }
+.dl[aria-disabled="true"] { opacity: 0.45; pointer-events: none; }
+.release { margin: -20px 0 0; color: var(--muted); font-size: 15px; }
+.release a { color: var(--ink); }
+
+.steps { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.steps li { display: flex; gap: 12px; align-items: baseline; }
+.steps li::before {
+  content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--muted); transform: translateY(-3px);
+}
+
+.foot {
+  display: flex; flex-wrap: wrap; gap: 6px 18px;
+  padding-top: 20px; border-top: 1px solid var(--line);
+  color: var(--muted); font-size: 14px;
+}
+
+/* The demo: a desktop at Inb's own point sizes, scaled to fit. */
+.demo { min-width: 0; }
+.stage-box { position: relative; width: 100%; aspect-ratio: 640 / 440; max-width: 100%; }
+.stage {
+  position: absolute; left: 0; top: 0;
+  width: 640px; height: 440px;
+  transform-origin: 0 0;
+  background: var(--desk);
+  border-radius: 6px;
+  overflow: hidden;
+  font: 500 13px/1 var(--text);
+  user-select: none;
+}
+
+.win {
+  position: absolute; left: 44px; top: 40px; width: 552px; height: 330px;
+  background: var(--window); border-radius: 6px;
+  box-shadow: 0 0 0 1px var(--window-line), 0 12px 30px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+.win-bar { height: 30px; background: var(--window-bar); border-bottom: 1px solid var(--window-line); display: flex; align-items: center; gap: 7px; padding: 0 12px; }
+.win-bar i { width: 10px; height: 10px; border-radius: 50%; background: var(--window-line); }
+.win-side { position: absolute; left: 0; top: 31px; bottom: 0; width: 120px; border-right: 1px solid var(--window-line); padding: 16px 14px; box-sizing: border-box; display: grid; gap: 10px; align-content: start; }
+.win-side span { height: 8px; border-radius: 4px; background: var(--window-line); }
+.win-side span:nth-child(2) { width: 70%; } .win-side span:nth-child(3) { width: 85%; } .win-side span:nth-child(4) { width: 55%; }
+.ball { position: absolute; width: 34px; height: 34px; border-radius: 50%; background: var(--shape); }
+.floor { position: absolute; left: 150px; right: 30px; top: 260px; height: 2px; background: var(--window-line); }
+
+.dim { position: absolute; box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.15); pointer-events: none; }
+.band { position: absolute; border: 2px solid var(--inb-bg); border-radius: 3px; box-shadow: 0 0 0 1px var(--inb-edge); }
+.handle { position: absolute; width: 6px; height: 6px; background: var(--inb-bg); box-shadow: 0 0 0 1px var(--inb-edge); }
+
+.bar {
+  position: absolute; width: 224px; height: 36px;
+  background: var(--inb-bg); color: var(--inb-fg);
+  border-radius: 3px; box-shadow: 0 0 0 1px var(--inb-edge);
+  overflow: hidden;
+}
+.bar > * { position: absolute; top: 4px; height: 28px; display: flex; align-items: center; }
+.bar .label { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bar .label em { font-style: normal; color: var(--inb-muted); margin-left: 6px; }
+.bar .btn { justify-content: center; gap: 6px; border-radius: 3px; background: var(--inb-chip); }
+.bar .plain { background: none; color: var(--inb-muted); }
+.bar .pressed { background: rgba(255, 255, 255, 0.24); }
+.bar svg { width: 12px; height: 12px; }
+.dot { width: 12px; height: 12px; border-radius: 50%; background: var(--inb-dot); }
+.circle { top: 0; height: auto; border-radius: 50%; background: var(--inb-rec); }
+.bar.live .btn { background: rgba(0, 0, 0, 0.22); }
+.bar.live .btn.pressed { background: rgba(0, 0, 0, 0.36); }
+
+.cursor { position: absolute; left: 0; top: 0; width: 20px; height: 20px; transform-origin: 2px 2px; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.3)); }
+
+@media (max-width: 860px) {
+  .page { grid-template-columns: minmax(0, 1fr); align-items: start; gap: 40px; padding-block: 40px; }
+  .info { gap: 26px; }
+}
+@media (max-width: 420px) {
+  .dl { flex: 1 1 100%; justify-content: center; }
+}
+</style>
+</head>
+<body>
+
+<main class="page">
+  <section class="info" aria-labelledby="name">
+    <h1 class="wordmark" id="name">Inb</h1>
+    <p class="lede">Record part of your screen as a GIF.</p>
+
+    <div class="downloads">
+      <a class="dl" id="dl-win" href="https://github.com/sandrogekeler/Inb/releases" aria-disabled="true">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 5.5 10 4.5v7H3zM11 4.4 21 3v8.5H11zM3 12.5h7v7l-7-1zM11 12.5h10V21l-10-1.4z"/></svg>
+        Download for Windows
+      </a>
+      <a class="dl secondary" id="dl-mac" href="https://github.com/sandrogekeler/Inb/releases" aria-disabled="true">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16.4 12.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9-1.7 0-3.3 1-4.2 2.6-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.3-.8 1.6 0 2 .8 3.4.8 1.4 0 2.3-1.3 3.1-2.5 1-1.4 1.4-2.8 1.4-2.9 0 0-2.7-1-2.7-4.1zM13.9 5c.7-.9 1.2-2 1-3.2-1 .1-2.3.7-3 1.6-.7.8-1.3 2-1.1 3.1 1.2.1 2.3-.6 3.1-1.5z"/></svg>
+        Download for macOS
+      </a>
+    </div>
+    <p class="release" id="release">No release yet. <a href="https://github.com/sandrogekeler/Inb">Follow it on GitHub</a>.</p>
+
+    <ul class="steps">
+      <li>Drag the frame around what you want.</li>
+      <li>Click record, then stop.</li>
+      <li>Paste the GIF anywhere, or save it.</li>
+    </ul>
+
+    <footer class="foot">
+      <span>Windows 10 or later · macOS 13 or later</span>
+      <span>Free and open source · <a href="https://github.com/sandrogekeler/Inb">GitHub</a></span>
+    </footer>
+  </section>
+
+  <section class="demo" aria-label="Inb recording part of a window">
+    <div class="stage-box" id="box">
+      <div class="stage" id="stage" aria-hidden="true">
+        <div class="win">
+          <div class="win-bar"><i></i><i></i><i></i></div>
+          <div class="win-side"><span></span><span></span><span></span><span></span></div>
+          <div class="floor"></div>
+        </div>
+        <div class="ball" id="ball"></div>
+        <div class="dim" id="dim"></div>
+        <div class="band" id="band"></div>
+        <div class="handle" id="h0"></div><div class="handle" id="h1"></div>
+        <div class="handle" id="h2"></div><div class="handle" id="h3"></div>
+        <div class="bar" id="bar"></div>
+        <svg class="cursor" id="cursor" viewBox="0 0 20 20"><path d="M2 2v14.5l3.8-3.6 2.5 5.6 2.4-1-2.5-5.5H14z" fill="#fff" stroke="#000" stroke-width="1.2" stroke-linejoin="round"/></svg>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+(() => {
+  // Sizes and timings from Inb's src/spec.rs and src/bar.rs, in points.
+  const BAND = 2, GAP = 6, BAR_W = 224, HANDLE = 6;
+  const ARM = 1000, GROW = 600, FADE = 350, SHRINK = 450;
+  const REC = [172, 18]; // centre of the record button on the bar
+  const BG = [0x1c, 0x1c, 0x1e], RED = [0xe5, 0x34, 0x2b];
+
+  const START = { x: 130, y: 90, w: 300, h: 180 };
+  const END = { x: 130, y: 90, w: 400, h: 230 };
+
+  // The loop, in ms.
+  const T = {
+    toCorner: [200, 900], drag: [1000, 2000], toRecord: [2300, 3000],
+    click: 3100, recording: 3100 + ARM + GROW, toStop: [6700, 7300], stop: 7500,
+    encoded: 8900, away: [9300, 10000], fadeOut: [11600, 12100], end: 12300,
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const stage = $("stage"), box = $("box"), bar = $("bar"), cursor = $("cursor");
+  const ease = (p) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2);
+  const span = (t, [a, b]) => Math.min(1, Math.max(0, (t - a) / (b - a)));
+  const mix = (a, b, p) => a + (b - a) * p;
+  const rgb = (p) => `rgb(${BG.map((c, i) => Math.round(mix(c, RED[i], p))).join(",")})`;
+
+  const icons = {
+    chevron: '<svg viewBox="0 0 12 12"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    cross: '<svg viewBox="0 0 12 12"><path d="M3 3l6 6M9 3 3 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
+    square: '<svg viewBox="0 0 12 12"><rect x="2.5" y="2.5" width="7" height="7" rx="1" fill="currentColor"/></svg>',
+  };
+  const at = (x, w) => `style="left:${x}px;width:${w}px"`;
+
+  // One layout per bar state, the same widths and order as bar.rs.
+  const layouts = {
+    idle: (s) => `
+      <div class="label" ${at(10, 68)} id="size">${s.size}</div>
+      <div class="btn" ${at(84, 68)}>15 fps ${icons.chevron}</div>
+      <div class="btn${s.press === "rec" ? " pressed" : ""}" ${at(158, 28)}><div class="dot" id="dot"></div></div>
+      <div class="btn plain" ${at(192, 28)}>${icons.cross}</div>
+      <div class="circle" id="circle"></div>`,
+    live: (s) => `
+      <div class="circle" id="circle"></div>
+      <div class="label" ${at(10, 128)} id="time">0:00</div>
+      <div class="btn${s.press === "stop" ? " pressed" : ""}" ${at(144, 76)}>${icons.square} Stop</div>`,
+    encoding: () => `
+      <div class="label" ${at(10, 176)}>Encoding<em id="pct">0%</em></div>
+      <div class="btn plain" ${at(192, 28)}>${icons.cross}</div>
+      <div class="circle" id="circle"></div>`,
+    done: () => `
+      <div class="label" ${at(10, 118)}>Copied<em>1.4 MB</em></div>
+      <div class="btn" ${at(134, 52)}>Save</div>
+      <div class="btn plain" ${at(192, 28)}>${icons.cross}</div>`,
+  };
+  let shown = "";
+  function setBar(name, s) {
+    const key = name + (s.press || "");
+    if (key === shown) return;
+    shown = key;
+    bar.innerHTML = layouts[name](s);
+    bar.classList.toggle("live", name === "live");
+  }
+  function setCircle(r) {
+    const c = $("circle");
+    if (!c) return;
+    c.hidden = r <= 0;
+    Object.assign(c.style, { left: REC[0] - r + "px", top: REC[1] - r + "px", width: 2 * r + "px", height: 2 * r + "px" });
+  }
+  const place = (el, x, y, w, h) => Object.assign(el.style, { left: x + "px", top: y + "px", width: w + "px", height: h + "px" });
+
+  function render(t) {
+    // The window keeps moving so there is something to record.
+    const k = (t % 1400) / 1400, hop = 4 * k * (1 - k);
+    const along = (t % 5600) / 5600, x = 210 + 300 * (along < 0.5 ? along * 2 : 2 - along * 2);
+    place($("ball"), x, 300 - 34 - hop * 120, 34, 34);
+
+    // The area: dragged bigger by its bottom-right corner.
+    const d = ease(span(t, T.drag));
+    const a = { x: START.x, y: START.y, w: Math.round(mix(START.w, END.w, d)), h: Math.round(mix(START.h, END.h, d)) };
+    const right = a.x + a.w, bottom = a.y + a.h;
+
+    // Red while live: fades in as the circle grows, out as it shrinks.
+    const growStart = T.click + ARM;
+    const red = t < T.stop ? span(t, [growStart, growStart + FADE]) : 1 - span(t, [T.stop, T.stop + FADE]);
+    const out = Math.min(span(t, [0, 250]), 1 - span(t, T.fadeOut));
+
+    place($("dim"), a.x, a.y, a.w, a.h);
+    place($("band"), a.x - BAND, a.y - BAND, a.w + 2 * BAND - 4, a.h + 2 * BAND - 4);
+    $("band").style.borderColor = rgb(red);
+    const idleLook = t < growStart;
+    [[a.x - BAND, a.y - BAND], [right + BAND - HANDLE, a.y - BAND], [a.x - BAND, bottom + BAND - HANDLE], [right + BAND - HANDLE, bottom + BAND - HANDLE]]
+      .forEach(([hx, hy], i) => { const h = $("h" + i); place(h, hx, hy, HANDLE, HANDLE); h.hidden = !idleLook; });
+    const barX = right + BAND - BAR_W, barY = bottom + BAND + GAP;
+    bar.style.left = barX + "px";
+    bar.style.top = barY + "px";
+    stage.style.setProperty("--fade", out);
+    for (const id of ["dim", "band", "bar", "h0", "h1", "h2", "h3"]) $(id).style.opacity = out;
+
+    // The bar.
+    const pressed = (when) => t >= when - 60 && t < when + 140;
+    if (t < T.recording) {
+      setBar("idle", { size: `${a.w} × ${a.h}`, press: pressed(T.click) ? "rec" : "" });
+      $("size").textContent = `${a.w} × ${a.h}`;
+      const wipe = span(t, [T.click, T.click + ARM]);
+      const dot = $("dot");
+      dot.style.webkitMaskImage = dot.style.maskImage = wipe > 0 && wipe < 1 ? `conic-gradient(transparent ${wipe}turn, #000 0)` : "";
+      dot.style.visibility = wipe >= 1 ? "hidden" : "";
+      setCircle(Math.max(0, ease(span(t, [growStart, growStart + GROW])) * 180));
+    } else if (t < T.stop + 120) {
+      setBar("live", { press: pressed(T.stop) ? "stop" : "" });
+      setCircle(180);
+      const s = Math.floor((t - T.recording) / 1000);
+      $("time").textContent = `0:0${s}`;
+    } else if (t < T.encoded) {
+      setBar("encoding", {});
+      setCircle(180 * (1 - ease(span(t, [T.stop + 120, T.stop + 120 + SHRINK]))));
+      const p = span(t, [T.stop + 300, T.encoded - 100]);
+      $("pct").textContent = Math.round(p * 100) + "%";
+    } else {
+      setBar("done", {});
+    }
+
+    // The pointer.
+    const corner = [right + BAND - 1, bottom + BAND - 1];
+    const rec = [barX + REC[0] + 2, barY + REC[1] + 2];
+    const stop = [barX + 182, barY + 20];
+    const legs = [
+      [[600, 420], [START.x + START.w + 1, START.y + START.h + 1], T.toCorner],
+      [null, corner, T.drag],
+      [null, rec, T.toRecord],
+      [null, stop, T.toStop],
+      [null, [560, 412], T.away],
+    ];
+    let pos = legs[0][0];
+    for (const [from, to, when] of legs) {
+      const p = ease(span(t, when));
+      const a0 = from || pos;
+      if (t >= when[0]) pos = [mix(a0[0], to[0], p), mix(a0[1], to[1], p)];
+    }
+    const down = (t >= T.drag[0] - 80 && t < T.drag[1] + 60) || pressed(T.click) || pressed(T.stop);
+    cursor.style.transform = `translate(${pos[0] - 2}px, ${pos[1] - 2}px) scale(${down ? 0.88 : 1})`;
+    cursor.style.opacity = out;
+  }
+
+  function fit() { stage.style.transform = `scale(${box.clientWidth / 640})`; }
+  new ResizeObserver(fit).observe(box);
+  fit();
+
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    render(5200);
+  } else {
+    let t0 = performance.now();
+    const loop = (now) => {
+      render((now - t0) % T.end);
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+  }
+
+  // Downloads: link the latest release's files once there is one.
+  fetch("https://api.github.com/repos/sandrogekeler/Inb/releases/latest")
+    .then((r) => (r.ok ? r.json() : null))
+    .then((rel) => {
+      if (!rel) return;
+      const find = (re) => (rel.assets || []).find((f) => re.test(f.name));
+      const win = find(/win/i), mac = find(/mac|darwin/i);
+      for (const [el, asset] of [[$("dl-win"), win], [$("dl-mac"), mac]]) {
+        el.href = asset ? asset.browser_download_url : rel.html_url;
+        el.removeAttribute("aria-disabled");
+      }
+      $("release").textContent = `Version ${rel.tag_name.replace(/^v/, "")}`;
+    })
+    .catch(() => {});
+})();
+</script>
+</body>
+</html>
