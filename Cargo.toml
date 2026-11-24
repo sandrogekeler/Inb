@@ -11,7 +11,7 @@ publish = false
 [dependencies]
 ab_glyph = "0.2"
 gif = "0.14"
-tiny-skia = "0.11"
+tiny-skia = "0.12"
 
 [target.'cfg(any(windows, target_os = "macos"))'.dependencies]
 winit = "0.30"
