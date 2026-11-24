@@ -540,9 +540,14 @@ a:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-rad
   } else {
     let t0 = performance.now();
     const loop = (now) => {
-      const n = Math.floor((now - t0) / T.end);
-      render((now - t0) % T.end, n % SCENES.length);
+      // Ask for the next frame first, so one bad frame cannot stop the loop.
       requestAnimationFrame(loop);
+      const n = Math.floor((now - t0) / T.end);
+      try {
+        render((now - t0) % T.end, n % SCENES.length);
+      } catch (e) {
+        console.error(e);
+      }
     };
     requestAnimationFrame(loop);
   }
