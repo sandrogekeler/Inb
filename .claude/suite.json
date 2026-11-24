@@ -7,6 +7,18 @@
   "health": {
     "commands": [
       {
+        "name": "cargo fmt",
+        "run": "cargo fmt --all --check"
+      },
+      {
+        "name": "cargo clippy",
+        "run": "cargo clippy --all-targets -- -D warnings"
+      },
+      {
+        "name": "cargo test",
+        "run": "cargo test"
+      },
+      {
         "name": "aislop",
         "run": "npx --yes aislop@0.16.0 ci"
       },

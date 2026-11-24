@@ -6,7 +6,8 @@ claude_action: false
 default_branch: main
 description: A screen recorder for macOS and Windows that saves GIFs
 kind: other
-languages: []
+languages:
+- rust
 license: GPL-3.0-only
 owner: sandrogekeler
 project_name: Inb

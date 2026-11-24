@@ -16,3 +16,14 @@ updates:
     groups:
       actions:
         patterns: ['*']
+
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+      day: sunday
+    labels: ['type:chore', 'area:build']
+    open-pull-requests-limit: 3
+    groups:
+      crates:
+        update-types: [minor, patch]
