@@ -12,7 +12,7 @@ use inb::geometry::{self, Grab, Layout, Rect, SIDES};
 use inb::session::{Effect, Event, Session};
 use inb::{draw, spec};
 use winit::application::ApplicationHandler;
-use winit::dpi::{LogicalPosition, LogicalSize};
+use winit::dpi::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize};
 use winit::event::{ElementState, MouseButton, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy};
 use winit::monitor::MonitorHandle;
@@ -59,7 +59,18 @@ struct App {
     cursor: Option<(Target, f64, f64)>,
     drag: Option<Drag>,
     hovered_fps: Option<u32>,
+    /// What each visible window shows now, so unchanged windows are skipped.
+    shown: HashMap<Target, Shown>,
     quit: bool,
+}
+
+/// A window's place and what decides its picture. The bar and the menu are
+/// small and always redrawn; the edges and the screen-sized dims are not.
+#[derive(Clone, Copy, PartialEq)]
+struct Shown {
+    rect: Rect,
+    red: f32,
+    handles: bool,
 }
 
 impl App {
@@ -79,6 +90,7 @@ impl App {
             cursor: None,
             drag: None,
             hovered_fps: None,
+            shown: HashMap::new(),
             quit: false,
         }
     }
@@ -153,29 +165,47 @@ impl App {
     }
 
     /// Moves every window to the current layout, then draws and shows it.
+    /// Windows are placed on whole pixels so neighbouring dims never overlap.
     fn place_and_redraw(&mut self) {
         let now = self.now();
-        let locked = self.session.frame_locked();
+        let red = self.session.red(now);
+        let handles = !self.session.frame_locked();
         for (&target, window) in &self.windows {
             let rect = self.rect_of(target);
             let visible = match target {
                 Target::Menu => self.session.menu_open,
                 _ => rect.w >= 1.0 && rect.h >= 1.0,
             };
-            window.set_visible(visible);
             if !visible {
+                if self.shown.remove(&target).is_some() {
+                    window.set_visible(false);
+                }
                 continue;
             }
-            window.set_outer_position(LogicalPosition::new(rect.x, rect.y));
-            let _ = window.request_inner_size(LogicalSize::new(rect.w, rect.h));
+            let shown = Shown { rect, red, handles };
+            let previous = self.shown.insert(target, shown);
+            let cached = matches!(target, Target::Edge(_) | Target::Dim(_));
+            if cached && previous == Some(shown) {
+                continue;
+            }
             let pixmap = match target {
-                Target::Edge(i) => draw::edge(SIDES[i], rect, self.session.red(now), !locked, self.scale),
+                Target::Edge(i) => draw::edge(SIDES[i], rect, red, handles, self.scale),
                 Target::Dim(_) => draw::dim(rect, self.scale),
                 Target::Bar => draw::bar(&self.session, now, self.area, self.font.as_ref(), self.scale),
                 Target::Menu => draw::menu(rect, self.session.fps, self.hovered_fps, self.font.as_ref(), self.scale),
             };
+            if previous.is_none_or(|p| p.rect != rect) {
+                window.set_outer_position(PhysicalPosition::new(
+                    (rect.x * self.scale).round() as i32,
+                    (rect.y * self.scale).round() as i32,
+                ));
+                let _ = window.request_inner_size(PhysicalSize::new(pixmap.width(), pixmap.height()));
+            }
             if let Err(e) = syswin::present(window, &pixmap) {
                 eprintln!("Inb: {e}");
+            }
+            if previous.is_none() {
+                window.set_visible(true);
             }
         }
     }
