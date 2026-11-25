@@ -51,8 +51,12 @@
   color-scheme: dark;
 }
 
-html, body { height: 100%; margin: 0; }
+html { height: 100%; }
 body {
+  margin: 0;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
   background: var(--ground);
   color: var(--ink);
   font: 400 17px/1.5 var(--text);
@@ -61,18 +65,40 @@ body {
 a { color: inherit; }
 a:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 3px; }
 
-.page {
-  min-height: 100%;
+.top, .page, .foot {
   box-sizing: border-box;
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding-left: max(24px, env(safe-area-inset-left, 0px));
+  padding-right: max(24px, env(safe-area-inset-right, 0px));
+}
+.top { display: flex; justify-content: flex-end; padding-block: 20px 0; }
+.github {
+  padding: 8px 14px;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1.5px var(--line);
+  font: 600 14px/1 var(--text);
+  text-decoration: none;
+}
+.github:hover, .dl.secondary:hover { box-shadow: inset 0 0 0 1.5px var(--muted); }
+.foot { padding-block: 0 28px; color: var(--muted); font-size: 13px; }
+.foot-in {
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.foot nav { display: flex; gap: 20px; }
+.foot a { color: inherit; }
+.foot a:hover { color: var(--ink); }
+
+.page {
+  flex: 1;
   display: grid;
   grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
   align-items: center;
   gap: clamp(32px, 6vw, 96px);
-  max-width: 1240px;
-  margin: 0 auto;
-  padding-block: 48px;
-  padding-left: max(24px, env(safe-area-inset-left, 0px));
-  padding-right: max(24px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 56px;
 }
 
 .info { display: flex; flex-direction: column; gap: 32px; min-width: 0; }
@@ -160,7 +186,7 @@ a:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-rad
 .cursor { position: absolute; left: 0; top: 0; width: 20px; height: 20px; transform-origin: 2px 2px; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.3)); }
 
 @media (max-width: 860px) {
-  .page { grid-template-columns: minmax(0, 1fr); align-items: start; gap: 40px; padding-block: 40px; }
+  .page { grid-template-columns: minmax(0, 1fr); align-items: start; gap: 40px; padding-block: 24px 40px; }
   .info { gap: 26px; }
 }
 @media (max-width: 460px) {
@@ -170,6 +196,10 @@ a:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-rad
 </style>
 </head>
 <body>
+
+<header class="top">
+  <a class="github" href="https://github.com/sandrogekeler/Inb">GitHub</a>
+</header>
 
 <main class="page">
   <section class="info" aria-labelledby="name">
@@ -212,6 +242,18 @@ a:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-rad
     </div>
   </section>
 </main>
+
+<footer class="foot">
+  <!-- placeholder: the organisation Inb moves to; the GitHub links follow it -->
+  <div class="foot-in">
+  <span>© 2026 AllesSandro</span>
+  <nav aria-label="Project">
+    <a href="https://github.com/sandrogekeler/Inb/releases">Releases</a>
+    <a href="https://github.com/sandrogekeler/Inb/blob/main/LICENSE">GPL-3.0</a>
+    <a href="https://github.com/sandrogekeler/Inb">Source</a>
+  </nav>
+  </div>
+</footer>
 
 <script>
 (() => {
@@ -299,32 +341,145 @@ a:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-rad
     g.font = font; g.fillStyle = fill; g.textAlign = align; g.fillText(str, x, y);
   }
 
+  // A small 3D viewport: a flat-shaded car on a ring road, seen from a
+  // camera that slowly orbits. Painter's algorithm, no depth buffer.
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const unit = (a) => { const l = Math.hypot(...a); return [a[0] / l, a[1] / l, a[2] / l]; };
+  const LIGHT = unit([0.5, 1, 0.35]);
+  const VIEW = [304, 112, 270]; // centre x, centre y, focal length
+  const NEAR = 0.3;
+  function shade(hex, k) {
+    const n = parseInt(hex.slice(1), 16);
+    return `rgb(${[n >> 16, (n >> 8) & 255, n & 255].map((c) => Math.round(Math.min(255, c * k))).join(",")})`;
+  }
+  function camera(angle) {
+    const eye = [Math.cos(angle) * 8.2, 3.7, Math.sin(angle) * 8.2];
+    const f = unit(sub([0, 0.3, 0], eye)), r = unit(cross(f, [0, 1, 0])), u = cross(r, f);
+    return { eye, view: (p) => { const d = sub(p, eye); return [dot(d, r), dot(d, u), dot(d, f)]; }, r, u };
+  }
+  const project = (v) => [VIEW[0] + (VIEW[2] * v[0]) / v[2], VIEW[1] - (VIEW[2] * v[1]) / v[2]];
+  function poly(pts, fill, stroke) {
+    g.beginPath();
+    pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+    g.closePath();
+    if (fill) { g.fillStyle = fill; g.fill(); }
+    if (stroke) { g.strokeStyle = stroke; g.lineWidth = 0.6; g.stroke(); }
+  }
+  function segment(cam, a, b, stroke) {
+    let p = cam.view(a), q = cam.view(b);
+    if (p[2] < NEAR && q[2] < NEAR) return;
+    if (p[2] < NEAR) [p, q] = [q, p];
+    if (q[2] < NEAR) { const k = (p[2] - NEAR) / (p[2] - q[2]); q = p.map((c, i) => c + (q[i] - c) * k); }
+    const [x1, y1] = project(p), [x2, y2] = project(q);
+    line(x1, y1, x2, y2, stroke);
+  }
+  // Faces of a box or a frustum given its bottom and top rectangles: [x0, x1, z0, z1] at y0 and y1.
+  function block(lo, hi, y0, y1, colours) {
+    const b = [[lo[0], y0, lo[2]], [lo[1], y0, lo[2]], [lo[1], y0, lo[3]], [lo[0], y0, lo[3]]];
+    const t = [[hi[0], y1, hi[2]], [hi[1], y1, hi[2]], [hi[1], y1, hi[3]], [hi[0], y1, hi[3]]];
+    const side = colours.side, end = colours.end || side;
+    return [
+      [t, colours.top],
+      [[b[0], b[1], t[1], t[0]], side], [[b[2], b[3], t[3], t[2]], side],
+      [[b[1], b[2], t[2], t[1]], end], [[b[3], b[0], t[0], t[3]], end],
+    ];
+  }
+  function wheel(cx, cz, side, spin) {
+    const faces = [], n = 10, r = 0.27, w = 0.2;
+    const ring = (z) => Array.from({ length: n }, (_, i) => {
+      const a = spin + (i / n) * Math.PI * 2;
+      return [cx + Math.cos(a) * r, 0.27 + Math.sin(a) * r, z];
+    });
+    const inner = ring(cz), outer = ring(cz + side * w);
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      faces.push([[inner[i], inner[j], outer[j], outer[i]], i % 2 ? "#1b1c1f" : "#2a2b2f"]);
+    }
+    faces.push([outer, "#55585f"]);
+    return faces;
+  }
+  const BODY = "#5b8def", GLASS = "#9cbdf2";
+  function carFaces(spin) {
+    return [
+      ...block([-1.05, 1.05, -0.5, 0.5], [-1.05, 1.05, -0.5, 0.5], 0.22, 0.62, { top: BODY, side: BODY }),
+      ...block([-0.6, 0.5, -0.44, 0.44], [-0.35, 0.3, -0.38, 0.38], 0.62, 1.0, { top: BODY, side: GLASS }),
+      ...block([1.0, 1.07, 0.26, 0.42], [1.0, 1.07, 0.26, 0.42], 0.42, 0.52, { top: "#f6e7a8", side: "#f6e7a8" }),
+      ...block([1.0, 1.07, -0.42, -0.26], [1.0, 1.07, -0.42, -0.26], 0.42, 0.52, { top: "#f6e7a8", side: "#f6e7a8" }),
+      ...block([-1.07, -1.0, -0.45, 0.45], [-1.07, -1.0, -0.45, 0.45], 0.45, 0.54, { top: "#c0392b", side: "#c0392b" }),
+      ...wheel(0.62, 0.44, 1, spin), ...wheel(-0.62, 0.44, 1, spin),
+      ...wheel(0.62, -0.44, -1, spin), ...wheel(-0.62, -0.44, -1, spin),
+    ];
+  }
+  function tree(x, z, h) {
+    const faces = block([x - 0.12, x + 0.12, z - 0.12, z + 0.12], [x - 0.12, x + 0.12, z - 0.12, z + 0.12], 0, 0.5, { top: "#6b4f3a", side: "#6b4f3a" });
+    const n = 7, top = [x, 0.5 + h, z];
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2, b = ((i + 1) / n) * Math.PI * 2;
+      faces.push([[[x + Math.cos(a) * 0.6, 0.45, z + Math.sin(a) * 0.6], [x + Math.cos(b) * 0.6, 0.45, z + Math.sin(b) * 0.6], top], "#4f8f5a"]);
+    }
+    return faces;
+  }
+  const TREES = [[-5.6, 1.8, 1.6], [5.2, -3.2, 1.3], [1.4, -6.2, 1.8], [-3.4, -5.4, 1.2], [6.2, 2.6, 1.5], [-1.2, 6.4, 1.4]].flatMap(([x, z, h]) => tree(x, z, h));
+  const ROAD_IN = 3.0, ROAD_OUT = 4.2;
+
   function car(t) {
-    rect(0, 0, W, H, 0, "#2b2c30");
+    const p = t / T.end;
+    const cam = camera(0.9 + p * 0.7);
+    rect(0, 0, W, H, 0, "#2e2f34");
+    for (let k = -10; k <= 10; k++) {
+      const c = k === 0 ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.05)";
+      segment(cam, [k, 0, -10], [k, 0, 10], c);
+      segment(cam, [-10, 0, k], [10, 0, k], c);
+    }
+    // The ring road and its dashed centre line.
+    const N = 56;
+    for (let i = 0; i < N; i++) {
+      const a = (i / N) * Math.PI * 2, b = ((i + 1) / N) * Math.PI * 2;
+      const q = [[ROAD_IN, a], [ROAD_OUT, a], [ROAD_OUT, b], [ROAD_IN, b]].map(([r, ang]) => cam.view([Math.cos(ang) * r, 0, Math.sin(ang) * r]));
+      if (q.some((v) => v[2] < NEAR)) continue;
+      poly(q.map(project), "#3d3e44");
+      if (i % 2) segment(cam, [Math.cos(a) * 3.6, 0, Math.sin(a) * 3.6], [Math.cos(b) * 3.6, 0, Math.sin(b) * 3.6], "rgba(230,215,150,0.55)");
+    }
+
+    // The car drives a little over half a lap per loop.
+    const th = -0.6 + p * Math.PI * 1.2, R = 3.6;
+    const pos = [Math.cos(th) * R, 0, Math.sin(th) * R];
+    const fx = -Math.sin(th), fz = Math.cos(th); // heading: local +x
+    const place3 = ([x, y, z]) => [pos[0] + x * fx - z * fz, y, pos[2] + x * fz + z * fx];
+    const spin = -(th * R) / 0.27;
+    const shadow = [[-1.15, -0.62], [1.15, -0.62], [1.15, 0.62], [-1.15, 0.62]].map(([x, z]) => cam.view(place3([x, 0.01, z])));
+    if (shadow.every((v) => v[2] > NEAR)) poly(shadow.map(project), "rgba(0,0,0,0.35)");
+
+    const faces = [
+      ...carFaces(spin).map(([pts, c]) => [pts.map(place3), c, true]),
+      ...TREES.map(([pts, c]) => [pts, c, false]),
+    ];
+    const drawn = [];
+    for (const [pts, colour, selected] of faces) {
+      const v = pts.map(cam.view);
+      if (v.some((q) => q[2] < NEAR)) continue;
+      let n = unit(cross(sub(pts[1], pts[0]), sub(pts[2], pts[0])));
+      if (dot(n, sub(cam.eye, pts[0])) < 0) n = n.map((c) => -c);
+      const light = 0.42 + 0.58 * Math.max(0, dot(n, LIGHT));
+      drawn.push([v.reduce((s, q) => s + q[2], 0) / v.length, v.map(project), shade(colour, light), selected]);
+    }
+    drawn.sort((a, b) => b[0] - a[0]);
+    for (const [, pts, fill, selected] of drawn) poly(pts, fill, selected ? "rgba(255,160,60,0.35)" : fill);
+    const origin = project(cam.view(place3([0, 0.02, 0])));
+    g.beginPath(); g.arc(origin[0], origin[1], 2.5, 0, Math.PI * 2); g.fillStyle = "#ffa03c"; g.fill();
+
+    // Panels drawn over the viewport: outliner, label, axes, timeline.
     rect(0, 0, 76, H, 0, "#232427");
     [50, 40, 46, 36, 42, 30].forEach((w, i) => rect(10, 14 + i * 16, w, 6, 3, i === 1 ? "#c98a3e" : "#45474d"));
-    rect(76, 96, W - 76, 163, 0, "#323338");
-    for (let x = -400; x <= 900; x += 60) line(x, 259, 314, 30, "rgba(255,255,255,0.05)");
-    for (let k = 0; k < 9; k++) { const y = 96 + 160 / (1 + (8 - k) * 0.55); line(76, y, W, y, "rgba(255,255,255,0.05)"); }
-    // Axes, top right.
-    line(520, 40, 536, 40, "#d9534f", 2); line(520, 40, 520, 24, "#62b35b", 2); line(520, 40, 510, 50, "#4f86e0", 2);
-
-    const p = t / T.end, cx = mix(40, 560, p), ground = 206;
-    g.beginPath(); g.ellipse(cx, ground + 2, 62, 6, 0, 0, Math.PI * 2); g.fillStyle = "rgba(0,0,0,0.35)"; g.fill();
-    rect(cx - 56, ground - 34, 112, 24, 8, "#5b8def");
-    g.beginPath(); g.moveTo(cx - 32, ground - 33); g.lineTo(cx - 18, ground - 54); g.lineTo(cx + 20, ground - 54); g.lineTo(cx + 38, ground - 33);
-    g.fillStyle = "#4a77cf"; g.fill();
-    g.beginPath(); g.moveTo(cx - 24, ground - 35); g.lineTo(cx - 14, ground - 50); g.lineTo(cx + 2, ground - 50); g.lineTo(cx + 2, ground - 35);
-    g.moveTo(cx + 7, ground - 35); g.lineTo(cx + 7, ground - 50); g.lineTo(cx + 17, ground - 50); g.lineTo(cx + 29, ground - 35);
-    g.fillStyle = "#a9c6f6"; g.fill();
-    rect(cx + 48, ground - 30, 7, 5, 2, "#f6e7a8");
-    for (const wx of [cx - 32, cx + 32]) {
-      g.beginPath(); g.arc(wx, ground - 10, 12, 0, Math.PI * 2); g.fillStyle = "#18191b"; g.fill();
-      g.beginPath(); g.arc(wx, ground - 10, 5, 0, Math.PI * 2); g.fillStyle = "#8a8d94"; g.fill();
-      const a = cx / 12;
-      line(wx - Math.cos(a) * 9, ground - 10 - Math.sin(a) * 9, wx + Math.cos(a) * 9, ground - 10 + Math.sin(a) * 9, "#8a8d94", 2);
+    text("Perspective", 88, 16, "#9a9ca3");
+    const gx = 524, gy = 34;
+    for (const [axis, colour] of [[[1, 0, 0], "#d9534f"], [[0, 1, 0], "#62b35b"], [[0, 0, 1], "#4f86e0"]]) {
+      const ex = gx + dot(axis, cam.r) * 14, ey = gy - dot(axis, cam.u) * 14;
+      line(gx, gy, ex, ey, colour, 2);
+      g.beginPath(); g.arc(ex, ey, 3, 0, Math.PI * 2); g.fillStyle = colour; g.fill();
     }
-    // Timeline with keyframes and the playhead.
     rect(0, 259, W, 40, 0, "#1f2023");
     for (let x = 86; x < W; x += 20) line(x, 263, x, x % 100 === 6 ? 273 : 268, "#45474d");
     for (const kx of [96, 256, 416]) { g.save(); g.translate(kx, 284); g.rotate(Math.PI / 4); rect(-4, -4, 8, 8, 1, "#e0b23a"); g.restore(); }
