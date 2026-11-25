@@ -1,11 +1,13 @@
 # Trying Inb on Windows and macOS
 
-Every pull request's CI run builds Inb on both systems. Two ways to try one.
+Every CI run, on main and on each pull request, builds Inb on both systems.
+Two ways to try a build.
 
 ## Without Rust: the CI build
 
-1. Open the pull request, then **Checks**, then the **CI** run, then
-   **Summary**. Under **Artifacts**, download `inb-Windows` or `inb-macOS`.
+1. Open the newest **CI** run under the repository's **Actions** tab (or a
+   pull request's **Checks**), then **Summary**. Under **Artifacts**,
+   download `inb-Windows` or `inb-macOS`.
 2. Windows: unzip and start `inb.exe`. SmartScreen warns because the build is
    not signed: **More info**, then **Run anyway**.
 3. macOS: unzip, then in Terminal in that folder:
@@ -31,10 +33,3 @@ click and what should happen. Examples try one part on its own:
 cargo run --release --example capture -- 100 100 640 400 5 15   # writes target/capture/*.png
 cargo run --example clipboard -- target/encode.gif              # then paste somewhere
 ```
-
-## Before Inb is fully built
-
-Until every part of the first build has landed, some parts are placeholders:
-windows stay invisible until #9 (Windows) or #10 (macOS), the bar is a flat
-rectangle until #8, and Record shows "Recording is not built yet" until #11
-or #12.
