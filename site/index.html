@@ -1,0 +1,1018 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Inb</title>
+<meta name="description" content="Record part of your screen as a GIF. For Windows and macOS.">
+<link rel="preload" href="fonts/familjen-grotesk.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/hanken-grotesk.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+@font-face { font-family: "Familjen Grotesk"; src: url("fonts/familjen-grotesk.woff2") format("woff2"); font-weight: 500 700; font-display: swap; }
+@font-face { font-family: "Hanken Grotesk"; src: url("fonts/hanken-grotesk.woff2") format("woff2"); font-weight: 400 600; font-display: swap; }
+/* Layout: one section, text and downloads on the left, the app recording on the right; stacks on phones.
+   Fonts: Familjen Grotesk for the wordmark, Hanken Grotesk for text, both OFL and not on the AI-default list. */
+:root {
+  --ground: #ececee;
+  --ink: #1c1c1e;
+  --muted: #5d5d63;
+  --line: #d2d2d6;
+  --button: #1c1c1e;
+  --button-ink: #f5f5f7;
+  --desk: #d7d8dc;
+  --window: #fbfbfc;
+  --window-bar: #eeeef0;
+  --window-line: #c9c9ce;
+  --shape: #8e8e96;
+  --display: "Familjen Grotesk", "Hanken Grotesk", "Segoe UI", system-ui, sans-serif;
+  --text: "Hanken Grotesk", "Segoe UI", system-ui, sans-serif;
+
+  /* Inb's own colours, from src/spec.rs. The same in both themes. */
+  --inb-bg: #1c1c1e;
+  --inb-fg: #f5f5f7;
+  --inb-muted: #a1a1a6;
+  --inb-chip: rgba(255, 255, 255, 0.1);
+  --inb-edge: rgba(0, 0, 0, 0.55);
+  --inb-dot: #ff453a;
+  --inb-rec: #e5342b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #141416; --ink: #f2f2f4; --muted: #a3a3aa; --line: #2c2c30;
+    --button: #f2f2f4; --button-ink: #141416;
+    --desk: #303035; --window: #46464c; --window-bar: #3c3c42; --window-line: #56565d; --shape: #8a8a92;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #141416; --ink: #f2f2f4; --muted: #a3a3aa; --line: #2c2c30;
+  --button: #f2f2f4; --button-ink: #141416;
+  --desk: #303035; --window: #46464c; --window-bar: #3c3c42; --window-line: #56565d; --shape: #8a8a92;
+  color-scheme: dark;
+}
+
+html { height: 100%; }
+body {
+  margin: 0;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--ground);
+  color: var(--ink);
+  font: 400 17px/1.5 var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+a:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 3px; }
+
+.top, .page, .foot {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding-left: max(24px, env(safe-area-inset-left, 0px));
+  padding-right: max(24px, env(safe-area-inset-right, 0px));
+}
+.top { display: flex; justify-content: flex-end; padding-block: 20px 0; }
+.github {
+  padding: 8px 14px;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1.5px var(--line);
+  font: 600 14px/1 var(--text);
+  text-decoration: none;
+}
+.github:hover, .dl.secondary:hover { box-shadow: inset 0 0 0 1.5px var(--muted); }
+.foot { padding-block: 0 28px; color: var(--muted); font-size: 13px; }
+.foot-in {
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.foot nav { display: flex; gap: 20px; }
+.foot a { color: inherit; }
+.foot a:hover { color: var(--ink); }
+
+.page {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  align-items: center;
+  gap: clamp(32px, 6vw, 96px);
+  padding-block: 40px 56px;
+}
+
+.info { display: flex; flex-direction: column; gap: 32px; min-width: 0; }
+.wordmark {
+  margin: 0;
+  font: 600 clamp(72px, 9vw, 120px)/0.9 var(--display);
+  letter-spacing: -0.04em;
+}
+.lede {
+  margin: -12px 0 0;
+  font-size: clamp(20px, 2vw, 24px);
+  line-height: 1.3;
+  text-wrap: balance;
+}
+
+.downloads { display: grid; grid-template-columns: repeat(2, minmax(0, max-content)); gap: 12px; }
+.dl-item { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.dl {
+  display: flex; align-items: center; justify-content: center;
+  padding: 13px 20px;
+  border-radius: 3px;
+  background: var(--button);
+  color: var(--button-ink);
+  font: 600 16px/1.15 var(--text);
+  text-align: center;
+  text-decoration: none;
+}
+.dl.secondary { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--line); }
+.req { color: var(--muted); font-size: 12px; }
+
+.steps { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.steps li { display: flex; gap: 12px; align-items: baseline; }
+.steps li::before {
+  content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--muted); transform: translateY(-3px);
+}
+
+/* The demo: a desktop at Inb's own point sizes, scaled to fit. */
+.demo { min-width: 0; }
+.stage-box { position: relative; width: 100%; aspect-ratio: 640 / 440; max-width: 100%; }
+.stage {
+  position: absolute; left: 0; top: 0;
+  width: 640px; height: 440px;
+  transform-origin: 0 0;
+  background: var(--desk);
+  border-radius: 6px;
+  overflow: hidden;
+  font: 500 13px/1 var(--text);
+  user-select: none;
+}
+
+.win {
+  position: absolute; left: 44px; top: 40px; width: 552px; height: 330px;
+  background: var(--window); border-radius: 6px;
+  box-shadow: 0 0 0 1px var(--window-line), 0 12px 30px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+.win-bar { height: 30px; background: var(--window-bar); border-bottom: 1px solid var(--window-line); display: flex; align-items: center; gap: 7px; padding: 0 12px; }
+.win-bar i { width: 10px; height: 10px; border-radius: 50%; background: var(--window-line); }
+.win-bar span { margin-left: auto; margin-right: auto; transform: translateX(-24px); color: var(--muted); font-size: 12px; }
+.screen { position: absolute; left: 0; top: 31px; width: 552px; height: 299px; display: block; }
+
+.dim { position: absolute; box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.15); pointer-events: none; }
+.band { position: absolute; border: 2px solid var(--inb-bg); border-radius: 3px; box-shadow: 0 0 0 1px var(--inb-edge); }
+.handle { position: absolute; width: 6px; height: 6px; background: var(--inb-bg); box-shadow: 0 0 0 1px var(--inb-edge); }
+
+.bar {
+  position: absolute; width: 224px; height: 36px;
+  background: var(--inb-bg); color: var(--inb-fg);
+  border-radius: 3px; box-shadow: 0 0 0 1px var(--inb-edge);
+  overflow: hidden;
+}
+.bar > * { position: absolute; top: 4px; height: 28px; display: flex; align-items: center; }
+.bar .label { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bar .label em { font-style: normal; color: var(--inb-muted); margin-left: 6px; }
+.bar .btn { justify-content: center; gap: 6px; border-radius: 3px; background: var(--inb-chip); }
+.bar .plain { background: none; color: var(--inb-muted); }
+.bar .pressed { background: rgba(255, 255, 255, 0.24); }
+.bar svg { width: 12px; height: 12px; }
+.dot { width: 12px; height: 12px; border-radius: 50%; background: var(--inb-dot); }
+.circle { top: 0; height: auto; border-radius: 50%; background: var(--inb-rec); }
+.bar.live .btn { background: rgba(0, 0, 0, 0.22); }
+.bar.live .btn.pressed { background: rgba(0, 0, 0, 0.36); }
+
+.cursor { position: absolute; left: 0; top: 0; width: 20px; height: 20px; transform-origin: 2px 2px; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.3)); }
+
+@media (max-width: 860px) {
+  .page { grid-template-columns: minmax(0, 1fr); align-items: start; gap: 40px; padding-block: 24px 40px; }
+  .info { gap: 26px; }
+}
+@media (max-width: 460px) {
+  .downloads { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .dl { flex: 1; padding: 12px 6px; font-size: 14px; }
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <a class="github" href="https://github.com/sandrogekeler/Inb">GitHub</a>
+</header>
+
+<main class="page">
+  <section class="info" aria-labelledby="name">
+    <h1 class="wordmark" id="name">Inb</h1>
+    <p class="lede">Record part of your screen as a GIF.</p>
+
+    <div class="downloads">
+      <div class="dl-item">
+        <a class="dl" id="dl-win" href="https://github.com/sandrogekeler/Inb/releases">Download for Windows</a>
+        <span class="req">Windows 10 (2004) or later</span>
+      </div>
+      <div class="dl-item">
+        <a class="dl secondary" id="dl-mac" href="https://github.com/sandrogekeler/Inb/releases">Download for macOS</a>
+        <span class="req">macOS 13 or later</span>
+      </div>
+    </div>
+
+    <ul class="steps">
+      <li>Drag the frame around what you want.</li>
+      <li>Click record, then stop.</li>
+      <li>Paste the GIF anywhere, or save it.</li>
+    </ul>
+
+  </section>
+
+  <section class="demo" aria-label="Inb recording part of a window">
+    <div class="stage-box" id="box">
+      <div class="stage" id="stage" aria-hidden="true">
+        <div class="win">
+          <div class="win-bar"><i></i><i></i><i></i><span id="title"></span></div>
+          <canvas class="screen" id="screen" width="1104" height="598"></canvas>
+        </div>
+        <div class="dim" id="dim"></div>
+        <div class="band" id="band"></div>
+        <div class="handle" id="h0"></div><div class="handle" id="h1"></div>
+        <div class="handle" id="h2"></div><div class="handle" id="h3"></div>
+        <div class="bar" id="bar"></div>
+        <svg class="cursor" id="cursor" viewBox="0 0 20 20"><path d="M2 2v14.5l3.8-3.6 2.5 5.6 2.4-1-2.5-5.5H14z" fill="#fff" stroke="#000" stroke-width="1.2" stroke-linejoin="round"/></svg>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <!-- placeholder: the organisation Inb moves to; the GitHub links follow it -->
+  <div class="foot-in">
+  <span>© 2026 AllesSandro</span>
+  <nav aria-label="Project">
+    <a href="https://github.com/sandrogekeler/Inb/releases">Releases</a>
+    <a href="https://github.com/sandrogekeler/Inb/blob/main/LICENSE">GPL-3.0</a>
+    <a href="https://github.com/sandrogekeler/Inb">Source</a>
+  </nav>
+  </div>
+</footer>
+
+<script>
+(() => {
+  // Sizes and timings from Inb's src/spec.rs and src/bar.rs, in points.
+  const BAND = 2, GAP = 6, BAR_W = 224, HANDLE = 6;
+  const ARM = 1000, GROW = 600, FADE = 350, SHRINK = 450;
+  const REC = [172, 18]; // centre of the record button on the bar
+  const BG = [0x1c, 0x1c, 0x1e], RED = [0xe5, 0x34, 0x2b];
+
+  const START = { x: 130, y: 90, w: 300, h: 180 };
+  const END = { x: 130, y: 90, w: 400, h: 230 };
+
+  // The loop, in ms.
+  const T = {
+    toCorner: [200, 900], drag: [1000, 2000], toRecord: [2300, 3000],
+    click: 3100, recording: 3100 + ARM + GROW, toStop: [6700, 7300], stop: 7500,
+    encoded: 8900, away: [9300, 10000], fadeOut: [11600, 12100], end: 12300,
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const stage = $("stage"), box = $("box"), bar = $("bar"), cursor = $("cursor");
+  const ease = (p) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2);
+  const span = (t, [a, b]) => Math.min(1, Math.max(0, (t - a) / (b - a)));
+  const mix = (a, b, p) => a + (b - a) * p;
+  const rgb = (p) => `rgb(${BG.map((c, i) => Math.round(mix(c, RED[i], p))).join(",")})`;
+
+  const icons = {
+    chevron: '<svg viewBox="0 0 12 12"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    cross: '<svg viewBox="0 0 12 12"><path d="M3 3l6 6M9 3 3 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
+    square: '<svg viewBox="0 0 12 12"><rect x="2.5" y="2.5" width="7" height="7" rx="1" fill="currentColor"/></svg>',
+  };
+  const at = (x, w) => `style="left:${x}px;width:${w}px"`;
+
+  // One layout per bar state, the same widths and order as bar.rs.
+  const layouts = {
+    idle: (s) => `
+      <div class="label" ${at(10, 68)} id="size">${s.size}</div>
+      <div class="btn" ${at(84, 68)}>15 fps ${icons.chevron}</div>
+      <div class="btn${s.press === "rec" ? " pressed" : ""}" ${at(158, 28)}><div class="dot" id="dot"></div></div>
+      <div class="btn plain" ${at(192, 28)}>${icons.cross}</div>
+      <div class="circle" id="circle"></div>`,
+    live: (s) => `
+      <div class="circle" id="circle"></div>
+      <div class="label" ${at(10, 128)} id="time">0:00</div>
+      <div class="btn${s.press === "stop" ? " pressed" : ""}" ${at(144, 76)}>${icons.square} Stop</div>`,
+    encoding: () => `
+      <div class="label" ${at(10, 176)}>Encoding<em id="pct">0%</em></div>
+      <div class="btn plain" ${at(192, 28)}>${icons.cross}</div>
+      <div class="circle" id="circle"></div>`,
+    done: () => `
+      <div class="label" ${at(10, 118)}>Copied<em>1.4 MB</em></div>
+      <div class="btn" ${at(134, 52)}>Save</div>
+      <div class="btn plain" ${at(192, 28)}>${icons.cross}</div>`,
+  };
+  let shown = "";
+  function setBar(name, s) {
+    const key = name + (s.press || "");
+    if (key === shown) return;
+    shown = key;
+    bar.innerHTML = layouts[name](s);
+    bar.classList.toggle("live", name === "live");
+  }
+  function setCircle(r) {
+    const c = $("circle");
+    if (!c) return;
+    c.hidden = r <= 0;
+    Object.assign(c.style, { left: REC[0] - r + "px", top: REC[1] - r + "px", width: 2 * r + "px", height: 2 * r + "px" });
+  }
+  const place = (el, x, y, w, h) => Object.assign(el.style, { left: x + "px", top: y + "px", width: w + "px", height: h + "px" });
+
+
+  // What is being recorded: one app per loop, drawn on the window's canvas
+  // in window points (552 × 299). The area covers x 86–486, y 19–249.
+  const screen = $("screen"), g = screen.getContext("2d");
+  const W = 552, H = 299;
+  const mono = '11px ui-monospace, "SF Mono", Menlo, Consolas, monospace';
+  let dark = false, checked = -1;
+  function rect(x, y, w, h, r, fill) {
+    g.beginPath(); g.roundRect(x, y, w, h, r); g.fillStyle = fill; g.fill();
+  }
+  function line(x1, y1, x2, y2, stroke, width = 1) {
+    g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.strokeStyle = stroke; g.lineWidth = width; g.stroke();
+  }
+  function text(str, x, y, fill, font = mono, align = "left") {
+    g.font = font; g.fillStyle = fill; g.textAlign = align; g.fillText(str, x, y);
+  }
+
+  // A small 3D viewport: a flat-shaded car on a ring road, seen from a
+  // camera that slowly orbits. Painter's algorithm, no depth buffer.
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const unit = (a) => { const l = Math.hypot(...a); return [a[0] / l, a[1] / l, a[2] / l]; };
+  const LIGHT = unit([0.5, 1, 0.35]);
+  const VIEW = [304, 112, 270]; // centre x, centre y, focal length
+  const NEAR = 0.3;
+  function shade(hex, k) {
+    const n = parseInt(hex.slice(1), 16);
+    return `rgb(${[n >> 16, (n >> 8) & 255, n & 255].map((c) => Math.round(Math.min(255, c * k))).join(",")})`;
+  }
+  function camera(angle) {
+    const eye = [Math.cos(angle) * 8.2, 3.7, Math.sin(angle) * 8.2];
+    const f = unit(sub([0, 0.3, 0], eye)), r = unit(cross(f, [0, 1, 0])), u = cross(r, f);
+    return { eye, view: (p) => { const d = sub(p, eye); return [dot(d, r), dot(d, u), dot(d, f)]; }, r, u };
+  }
+  const project = (v) => [VIEW[0] + (VIEW[2] * v[0]) / v[2], VIEW[1] - (VIEW[2] * v[1]) / v[2]];
+  function poly(pts, fill, stroke) {
+    g.beginPath();
+    pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+    g.closePath();
+    if (fill) { g.fillStyle = fill; g.fill(); }
+    if (stroke) { g.strokeStyle = stroke; g.lineWidth = 0.6; g.stroke(); }
+  }
+  function segment(cam, a, b, stroke) {
+    let p = cam.view(a), q = cam.view(b);
+    if (p[2] < NEAR && q[2] < NEAR) return;
+    if (p[2] < NEAR) [p, q] = [q, p];
+    if (q[2] < NEAR) { const k = (p[2] - NEAR) / (p[2] - q[2]); q = p.map((c, i) => c + (q[i] - c) * k); }
+    const [x1, y1] = project(p), [x2, y2] = project(q);
+    line(x1, y1, x2, y2, stroke);
+  }
+  // Faces of a box or a frustum given its bottom and top rectangles: [x0, x1, z0, z1] at y0 and y1.
+  function block(lo, hi, y0, y1, top, side, end = side) {
+    const b = [[lo[0], y0, lo[2]], [lo[1], y0, lo[2]], [lo[1], y0, lo[3]], [lo[0], y0, lo[3]]];
+    const t = [[hi[0], y1, hi[2]], [hi[1], y1, hi[2]], [hi[1], y1, hi[3]], [hi[0], y1, hi[3]]];
+    return [
+      [t, top], [b, side],
+      [[b[0], b[1], t[1], t[0]], side], [[b[2], b[3], t[3], t[2]], side],
+      [[b[1], b[2], t[2], t[1]], end], [[b[3], b[0], t[0], t[3]], end],
+    ];
+  }
+  // A part is convex, so hiding its back faces is enough to draw it right.
+  const part = (faces, centre) => ({ faces, centre });
+  const WHEEL_R = 0.27, BODY_Z = 0.5, TYRE = 0.18;
+  function wheel(cx, side, spin) {
+    const faces = [], n = 12, z0 = side * BODY_Z, z1 = side * (BODY_Z + TYRE);
+    const ring = (z, r) => Array.from({ length: n }, (_, i) => {
+      const a = spin + (i / n) * Math.PI * 2;
+      return [cx + Math.cos(a) * r, WHEEL_R + Math.sin(a) * r, z];
+    });
+    const inner = ring(z0, WHEEL_R), outer = ring(z1, WHEEL_R);
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      faces.push([[inner[i], inner[j], outer[j], outer[i]], i % 2 ? "#1b1c1f" : "#2a2b2f"]);
+    }
+    faces.push([outer, "#2a2b2f"], [inner, "#2a2b2f"]);
+    return part(faces, [cx, WHEEL_R, (z0 + z1) / 2]);
+  }
+  // The rim sits just outside the tyre, so it always draws over it.
+  function rim(cx, side, spin) {
+    const z = side * (BODY_Z + TYRE + 0.005), n = 6;
+    const pts = Array.from({ length: n }, (_, i) => {
+      const a = spin + (i / n) * Math.PI * 2;
+      return [cx + Math.cos(a) * 0.15, WHEEL_R + Math.sin(a) * 0.15, z];
+    });
+    return part([[pts, "#9a9ea6"]], [cx, WHEEL_R, side * (BODY_Z + TYRE - 0.1)]);
+  }
+  const BODY = "#5b8def", GLASS = "#9cbdf2";
+  const CAR_BODY = part(block([-1.05, 1.05, -BODY_Z, BODY_Z], [-1.05, 1.05, -BODY_Z, BODY_Z], 0.2, 0.62, BODY, BODY), [0, 0.41, 0]);
+  const CAR_CABIN = part(block([-0.6, 0.5, -0.44, 0.44], [-0.35, 0.3, -0.38, 0.38], 0.62, 1.0, BODY, GLASS), [-0.05, 0.8, 0]);
+  const CAR_LIGHTS = [
+    part(block([1.05, 1.09, 0.26, 0.42], [1.05, 1.09, 0.26, 0.42], 0.42, 0.52, "#f6e7a8", "#f6e7a8"), [1.07, 0.47, 0.34]),
+    part(block([1.05, 1.09, -0.42, -0.26], [1.05, 1.09, -0.42, -0.26], 0.42, 0.52, "#f6e7a8", "#f6e7a8"), [1.07, 0.47, -0.34]),
+    part(block([-1.09, -1.05, -0.45, 0.45], [-1.09, -1.05, -0.45, 0.45], 0.44, 0.54, "#c0392b", "#c0392b"), [-1.07, 0.49, 0]),
+  ];
+  function tree(x, z, h) {
+    const trunk = part(block([x - 0.12, x + 0.12, z - 0.12, z + 0.12], [x - 0.12, x + 0.12, z - 0.12, z + 0.12], 0, 0.5, "#6b4f3a", "#6b4f3a"), [x, 0.25, z]);
+    const n = 7, top = [x, 0.5 + h, z], faces = [];
+    const base = Array.from({ length: n }, (_, i) => [x + Math.cos((i / n) * Math.PI * 2) * 0.6, 0.45, z + Math.sin((i / n) * Math.PI * 2) * 0.6]);
+    for (let i = 0; i < n; i++) faces.push([[base[i], base[(i + 1) % n], top], "#4f8f5a"]);
+    faces.push([base, "#3c6e45"]);
+    return { centre: [x, 0.6, z], parts: [trunk, part(faces, [x, 0.45 + h / 4, z])] };
+  }
+  const TREES = [[-5.6, 1.8, 1.6], [5.2, -3.2, 1.3], [1.4, -6.2, 1.8], [-3.4, -5.4, 1.2], [6.2, 2.6, 1.5], [-1.2, 6.4, 1.4]].map(([x, z, h]) => tree(x, z, h));
+  const ROAD_IN = 3.0, ROAD_OUT = 4.2;
+  const centreOf = (pts) => pts.reduce((c, q) => [c[0] + q[0] / pts.length, c[1] + q[1] / pts.length, c[2] + q[2] / pts.length], [0, 0, 0]);
+
+  function drawPart(cam, { faces, centre }, toWorld, outline) {
+    const c = toWorld(centre);
+    for (const [local, colour] of faces) {
+      const pts = local.map(toWorld);
+      const v = pts.map(cam.view);
+      if (v.some((q) => q[2] < NEAR)) continue;
+      const fc = centreOf(pts);
+      let n = unit(cross(sub(pts[1], pts[0]), sub(pts[2], pts[0])));
+      if (dot(n, sub(fc, c)) < 0) n = n.map((k) => -k);
+      if (dot(n, sub(cam.eye, fc)) <= 0) continue;
+      const light = 0.42 + 0.58 * Math.max(0, dot(n, LIGHT));
+      poly(v.map(project), shade(colour, light), outline || shade(colour, light));
+    }
+  }
+
+  function car(t) {
+    const p = t / T.end;
+    const cam = camera(0.9 + p * 0.7);
+    rect(0, 0, W, H, 0, "#2e2f34");
+    for (let k = -10; k <= 10; k++) {
+      const c = k === 0 ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.05)";
+      segment(cam, [k, 0, -10], [k, 0, 10], c);
+      segment(cam, [-10, 0, k], [10, 0, k], c);
+    }
+    // The ring road and its dashed centre line.
+    const N = 56;
+    for (let i = 0; i < N; i++) {
+      const a = (i / N) * Math.PI * 2, b = ((i + 1) / N) * Math.PI * 2;
+      const q = [[ROAD_IN, a], [ROAD_OUT, a], [ROAD_OUT, b], [ROAD_IN, b]].map(([r, ang]) => cam.view([Math.cos(ang) * r, 0, Math.sin(ang) * r]));
+      if (q.some((v) => v[2] < NEAR)) continue;
+      poly(q.map(project), "#3d3e44");
+      if (i % 2) segment(cam, [Math.cos(a) * 3.6, 0, Math.sin(a) * 3.6], [Math.cos(b) * 3.6, 0, Math.sin(b) * 3.6], "rgba(230,215,150,0.55)");
+    }
+
+    // The car drives a little over half a lap per loop.
+    const th = -0.6 + p * Math.PI * 1.2, R = 3.6;
+    const pos = [Math.cos(th) * R, 0, Math.sin(th) * R];
+    const fx = -Math.sin(th), fz = Math.cos(th); // heading: local +x
+    const toWorld = ([x, y, z]) => [pos[0] + x * fx - z * fz, y, pos[2] + x * fz + z * fx];
+    const spin = -(th * R) / WHEEL_R;
+    const shadow = [[-1.15, -0.72], [1.15, -0.72], [1.15, 0.72], [-1.15, 0.72]].map(([x, z]) => cam.view(toWorld([x, 0.01, z])));
+    if (shadow.every((v) => v[2] > NEAR)) poly(shadow.map(project), "rgba(0,0,0,0.35)");
+
+    // Which side of the car faces the camera decides whether its wheels go behind or in front of the body.
+    const near = Math.sign(dot([-fz, 0, fx], sub(cam.eye, pos))) || 1;
+    const wheels = (side) => [0.64, -0.64].flatMap((x) => [wheel(x, side, spin), rim(x, side, spin)]);
+    const carParts = [...wheels(-near), CAR_BODY, ...CAR_LIGHTS, CAR_CABIN, ...wheels(near)];
+
+    // Whole objects back to front: the trees and the car.
+    const objects = [
+      ...TREES.map((tr) => ({ depth: cam.view(tr.centre)[2], draw: () => tr.parts.forEach((pt) => drawPart(cam, pt, (q) => q)) })),
+      { depth: cam.view(pos)[2], draw: () => carParts.forEach((pt) => drawPart(cam, pt, toWorld, "rgba(255,160,60,0.35)")) },
+    ].sort((a, b) => b.depth - a.depth);
+    objects.forEach((o) => o.draw());
+    const origin = project(cam.view(toWorld([0, 0.02, 0])));
+    g.beginPath(); g.arc(origin[0], origin[1], 2.5, 0, Math.PI * 2); g.fillStyle = "#ffa03c"; g.fill();
+
+    // Panels drawn over the viewport: outliner, label, axes, timeline.
+    rect(0, 0, 76, H, 0, "#232427");
+    [50, 40, 46, 36, 42, 30].forEach((w, i) => rect(10, 14 + i * 16, w, 6, 3, i === 1 ? "#c98a3e" : "#45474d"));
+    text("Perspective", 88, 16, "#9a9ca3");
+    const gx = 524, gy = 34;
+    for (const [axis, colour] of [[[1, 0, 0], "#d9534f"], [[0, 1, 0], "#62b35b"], [[0, 0, 1], "#4f86e0"]]) {
+      const ex = gx + dot(axis, cam.r) * 14, ey = gy - dot(axis, cam.u) * 14;
+      line(gx, gy, ex, ey, colour, 2);
+      g.beginPath(); g.arc(ex, ey, 3, 0, Math.PI * 2); g.fillStyle = colour; g.fill();
+    }
+    rect(0, 259, W, 40, 0, "#1f2023");
+    for (let x = 86; x < W; x += 20) line(x, 263, x, x % 100 === 6 ? 273 : 268, "#45474d");
+    for (const kx of [96, 256, 416]) { g.save(); g.translate(kx, 284); g.rotate(Math.PI / 4); rect(-4, -4, 8, 8, 1, "#e0b23a"); g.restore(); }
+    const ph = mix(86, 536, p);
+    line(ph, 259, ph, H, "#4f8ff7", 2);
+    text(String(Math.round(p * 120)).padStart(3, "0"), ph + 5, 272, "#cfd3da");
+  }
+
+  function website(t) {
+    const s = t / 1000;
+    const canvas = dark ? "#1f1f23" : "#e6e6ea", panel = dark ? "#2a2a2f" : "#f5f5f7", rule = dark ? "#3a3a40" : "#d6d6db";
+    const blue = "#3b82f6", buttons = ["#202024", "#2f6df0", "#e06a3b"];
+    rect(0, 0, W, H, 0, canvas);
+    rect(0, 0, 74, H, 0, panel); line(74, 0, 74, H, rule);
+    rect(W - 66, 0, 66, H, 0, panel); line(W - 66, 0, W - 66, H, rule);
+    ["Nav", "Hero", "Title", "Button", "Image", "Cards"].forEach((_, i) => rect(10, 14 + i * 16, [34, 30, 38, 42, 36, 32][i], 6, 3, i === 3 && s > 4 ? blue : rule));
+    const colour = buttons[s < 5 ? 0 : s < 6.6 ? 1 : 2];
+    rect(W - 56, 16, 46, 6, 3, rule); rect(W - 56, 30, 16, 16, 3, colour); rect(W - 36, 36, 26, 5, 2, rule);
+    rect(W - 56, 58, 46, 6, 3, rule); rect(W - 56, 70, 34, 6, 3, rule);
+
+    const ax = 92, ay = 12, aw = 380;
+    rect(ax, ay, aw, 240, 2, "#ffffff");
+    rect(ax + 16, ay + 14, 16, 16, 4, "#202024");
+    [0, 1, 2].forEach((i) => rect(ax + aw - 120 + i * 36, ay + 19, 26, 6, 3, "#c9c9cf"));
+    const grow = (from, dur) => ease(span(s, [from, from + dur]));
+    rect(ax + 16, ay + 54, 190 * grow(0.6, 0.6), 16, 3, "#202024");
+    rect(ax + 16, ay + 76, 140 * grow(1.2, 0.6), 16, 3, "#202024");
+    [0, 1, 2].forEach((i) => rect(ax + 16, ay + 104 + i * 12, [170, 160, 120][i] * grow(2 + i * 0.25, 0.4), 6, 3, "#b9b9c0"));
+    const bw = mix(84, 116, grow(6, 0.5)), by = ay + 152;
+    g.globalAlpha = grow(3, 0.4);
+    rect(ax + 16, by, bw, 28, 4, colour);
+    rect(ax + 30, by + 11, bw - 28, 6, 3, "rgba(255,255,255,0.85)");
+    g.globalAlpha = 1;
+    const ix = ax + 232 + 30 * (1 - grow(3.6, 0.6));
+    g.globalAlpha = grow(3.6, 0.6);
+    rect(ix, ay + 50, 130, 130, 4, "#dfe4ec");
+    g.beginPath(); g.moveTo(ix + 14, ay + 160); g.lineTo(ix + 54, ay + 104); g.lineTo(ix + 80, ay + 138); g.lineTo(ix + 96, ay + 120); g.lineTo(ix + 118, ay + 160);
+    g.fillStyle = "#b5bfcd"; g.fill();
+    g.beginPath(); g.arc(ix + 98, ay + 78, 10, 0, Math.PI * 2); g.fillStyle = "#f1c96b"; g.fill();
+    g.globalAlpha = 1;
+    [0, 1, 2].forEach((i) => { g.globalAlpha = grow(8 + i * 0.3, 0.4); rect(ax + 16 + i * 120, ay + 196, 108, 34, 4, "#f0f0f3"); });
+    g.globalAlpha = 1;
+    if (s > 4 && s < 9.5) {
+      g.strokeStyle = blue; g.lineWidth = 1.5; g.strokeRect(ax + 14, by - 2, bw + 4, 32);
+      for (const [hx, hy] of [[ax + 14, by - 2], [ax + 18 + bw, by - 2], [ax + 14, by + 30], [ax + 18 + bw, by + 30]]) {
+        rect(hx - 3, hy - 3, 6, 6, 1, "#ffffff"); g.strokeRect(hx - 3, hy - 3, 6, 6);
+      }
+      text(`${Math.round(bw)} × 28`, ax + 16 + bw / 2, by + 46, blue, '10px ui-monospace, Menlo, Consolas, monospace', "center");
+    }
+  }
+
+  const CODE = [
+    [["fn ", "k"], ["greet", "f"], ["(name: &", "p"], ["str", "k"], [") -> ", "p"], ["String", "k"], [" {", "p"]],
+    [["    format!", "f"], ["(", "p"], ['"Hello, {name}!"', "s"], [")", "p"]],
+    [["}", "p"]],
+    [],
+    [["#[test]", "c"]],
+    [["fn ", "k"], ["says_hello", "f"], ["() {", "p"]],
+    [["    assert_eq!", "f"], ["(greet(", "p"], ['"Inb"', "s"], ["), ", "p"], ['"Hello, Inb!"', "s"], [");", "p"]],
+    [["}", "p"]],
+  ];
+  const TERM = ["$ cargo test", "running 1 test", "test says_hello ... ok"];
+  function code(t) {
+    const hue = dark
+      ? { bg: "#1d1d21", gut: "#5c5c66", p: "#d7d7de", k: "#c792ea", f: "#82aaff", s: "#c3e88d", c: "#7f8590", term: "#151518", ok: "#7fd27f" }
+      : { bg: "#fbfbfc", gut: "#a5a5ad", p: "#2a2a30", k: "#8a3fc7", f: "#2f5fd0", s: "#3d7d26", c: "#8a8a93", term: "#f0f0f3", ok: "#2f8a2f" };
+    rect(0, 0, W, H, 0, hue.bg);
+    rect(0, 0, 150, 24, 0, dark ? "#26262b" : "#eeeef1");
+    text("greet.rs", 14, 16, hue.p);
+    let budget = Math.max(0, (t - 300) / 1000 * 45);
+    CODE.forEach((tokens, row) => {
+      const y = 50 + row * 17;
+      text(String(row + 1).padStart(2, " "), 96, y, hue.gut);
+      let x = 122;
+      for (const [str, kind] of tokens) {
+        const shown = str.slice(0, Math.max(0, Math.floor(budget)));
+        budget -= str.length;
+        if (!shown) break;
+        text(shown, x, y, hue[kind]);
+        x += g.measureText(shown).width;
+      }
+      budget -= 2;
+      if (budget > -2 && budget <= 0 && Math.floor(t / 400) % 2 === 0) rect(x + 1, y - 9, 1.5, 12, 0, hue.p);
+    });
+    rect(0, 178, W, 121, 0, hue.term); line(0, 178, W, 178, dark ? "#2e2e34" : "#dedee3");
+    text("Terminal", 96, 195, hue.gut);
+    const typed = Math.floor(span(t, [4900, 5400]) * TERM[0].length);
+    if (t > 4700) text(TERM[0].slice(0, typed), 96, 213, hue.p);
+    TERM.slice(1).forEach((l, i) => { if (t > 5700 + i * 450) text(l, 96, 229 + i * 15, i === 1 ? hue.ok : hue.p); });
+  }
+
+  // An original platform fighter: two fighters on a floating stage, one round
+  // scripted per loop. Positions are keyframed; hits come from EVENTS.
+  const G = 212, PLAT = 148;
+  const rnd = (i) => { const v = Math.sin(i * 12.9898) * 43758.5453; return v - Math.floor(v); };
+  function keyed(keys, t) {
+    if (t <= keys[0][0]) return keys[0][1];
+    for (let i = 1; i < keys.length; i++) {
+      if (t <= keys[i][0]) {
+        const [t0, v0] = keys[i - 1], [t1, v1] = keys[i];
+        const k = (t - t0) / (t1 - t0);
+        return v0 + (v1 - v0) * k * k * (3 - 2 * k);
+      }
+    }
+    return keys[keys.length - 1][1];
+  }
+  const hop = (jumps, t) => jumps.reduce((y, [t0, d, h]) => {
+    const u = (t - t0) / d;
+    return u > 0 && u < 1 ? y - 4 * h * u * (1 - u) : y;
+  }, 0);
+  const FIGHTERS = {
+    A: {
+      name: "Kael", body: "#c8413b", trim: "#f2c14e", skin: "#f0c8a0", pants: "#3a2f45", weapon: "sword", start: 38,
+      x: [[0, 150], [1300, 250], [1800, 282], [3000, 296], [3300, 300], [3700, 318], [4400, 326], [5000, 362], [6400, 372], [7300, 372], [7900, 330], [9300, 300], [10600, 250], [12300, 150]],
+      floor: [[0, G], [4650, G], [5100, PLAT], [7300, PLAT], [7800, G], [12300, G]],
+      jumps: [[3150, 450, 46], [4650, 450, 40], [7300, 500, 14]],
+    },
+    B: {
+      name: "Mira", body: "#2f9c95", trim: "#d8f3ee", skin: "#e2b48c", pants: "#263247", weapon: "hammer", start: 64,
+      x: [[0, 430], [1300, 340], [1800, 316], [2000, 316], [2300, 352], [2700, 368], [3000, 344], [3450, 350], [3800, 388], [4300, 376], [4600, 384], [5000, 396], [6400, 404], [12300, 404]],
+      floor: [[0, G], [4550, G], [5000, PLAT], [6400, PLAT], [12300, PLAT]],
+      jumps: [[2050, 350, 24], [3450, 380, 30], [4550, 450, 48]],
+    },
+  };
+  // [time, attacker, move, damage]; a damage of 0 is the knockout.
+  const EVENTS = [[2000, "A", "light", 9], [3000, "B", "heavy", 14], [3450, "A", "air", 11], [4300, "B", "light", 8], [5800, "A", "light", 7], [6050, "A", "light", 6], [6400, "A", "heavy", 0]];
+  const KO = 6400, BLAST = 6750, RESPAWN = 8800, LAND = 9400;
+
+  function position(id, t) {
+    const f = FIGHTERS[id];
+    if (id === "B" && t > KO) {
+      if (t < RESPAWN) { const d = (t - KO) / 1000; return [404 + 120 * d, PLAT - 46 - 420 * d + 60 * d * d, false]; }
+      const k = ease(span(t, [RESPAWN, LAND]));
+      return [mix(404, 420, k), mix(-30, G, k), k < 1];
+    }
+    const base = keyed(f.floor, t), y = base + hop(f.jumps, t);
+    return [keyed(f.x, t), y, y < base - 0.5];
+  }
+  function attackOf(id, t) {
+    for (const [at, who, move] of EVENTS) if (who === id && t > at - 200 && t < at + 160) return [move, (t - at + 200) / 360];
+    return null;
+  }
+  function damage(id, t) {
+    if (id === "B" && t > BLAST) return 0;
+    return EVENTS.reduce((d, [at, who, , dmg]) => (who !== id && t >= at ? d + dmg : d), FIGHTERS[id].start);
+  }
+
+  function drawFighter(id, t, other) {
+    const f = FIGHTERS[id];
+    const [x, y, air] = position(id, t);
+    if (y < -60 || x > W + 40) return;
+    const vx = (position(id, t + 20)[0] - position(id, t - 20)[0]) * 25;
+    const face = Math.sign(other[0] - x) || 1;
+    const hitBy = EVENTS.find(([at, who]) => who !== id && t >= at && t < at + 110);
+    const flash = Boolean(hitBy);
+    const blink = id === "B" && t > RESPAWN && t < 10200 && Math.floor(t / 90) % 2 === 0;
+    const atk = attackOf(id, t);
+    const O = "#15131c";
+
+    // Shadow and running dust on the floor below.
+    const floor = air ? (Math.abs(x - 216) < 42 || Math.abs(x - 366) < 42) && y < PLAT ? PLAT : G : y;
+    if (x > 104 && x < 476) {
+      const lift = Math.min(1, Math.max(0, (floor - y) / 80));
+      g.beginPath(); g.ellipse(x, floor + 1, 13 * (1 - lift * 0.5), 3, 0, 0, Math.PI * 2); g.fillStyle = `rgba(10,8,20,${0.35 * (1 - lift)})`; g.fill();
+    }
+    if (!air && Math.abs(vx) > 40) {
+      for (let i = 0; i < 3; i++) {
+        const k = ((t / 260) + i / 3) % 1;
+        g.beginPath(); g.arc(x - Math.sign(vx) * (8 + k * 14), y - 2 - k * 5, 2 + k * 3, 0, Math.PI * 2);
+        g.fillStyle = `rgba(235,225,240,${0.45 * (1 - k)})`; g.fill();
+      }
+    }
+
+    g.save();
+    g.translate(x, y); g.scale(face, 1);
+    g.globalAlpha = blink ? 0.45 : 1;
+    g.lineWidth = 1.6; g.strokeStyle = O; g.lineJoin = "round";
+    const paint = (c) => { g.fillStyle = flash ? "#ffffff" : c; g.fill(); g.stroke(); };
+    const run = (t / 1000) * 14, stride = air ? 0 : Math.min(1, Math.abs(vx) / 90);
+    const legA = air ? 0.6 : Math.sin(run) * 0.8 * stride, legB = air ? -0.35 : -Math.sin(run) * 0.8 * stride;
+    const leg = (a, c) => {
+      g.save(); g.translate(0, -18); g.rotate(a);
+      g.beginPath(); g.roundRect(-3.5, 0, 7, 14, 3); paint(c);
+      g.beginPath(); g.roundRect(-4, 11, 10, 6, 2); paint("#2a2230");
+      g.restore();
+    };
+    leg(legB, shade(f.pants, 0.8));
+    // Cape or scarf, waving behind.
+    const wave = Math.sin(t / 110) * 3 + (air ? 4 : 0) + Math.abs(vx) * 0.04;
+    g.beginPath(); g.moveTo(-5, -35); g.quadraticCurveTo(-16 - wave, -26, -22 - wave, -10 + wave * 0.4); g.lineTo(-10, -14); g.closePath();
+    paint(id === "A" ? f.trim : f.body);
+    // Torso, belt and emblem.
+    g.beginPath(); g.roundRect(-9, -37, 18, 21, 5); paint(f.body);
+    g.beginPath(); g.moveTo(-6, -34); g.lineTo(4, -34); g.lineTo(-2, -24); g.closePath(); g.fillStyle = flash ? "#fff" : f.trim; g.fill();
+    g.beginPath(); g.roundRect(-9, -21, 18, 4, 1); paint("#2a2230");
+    leg(legA, f.pants);
+    // Head with helmet or hood.
+    g.beginPath(); g.arc(1, -45, 8, 0, Math.PI * 2); paint(f.skin);
+    if (id === "A") {
+      g.beginPath(); g.arc(1, -46, 8.6, Math.PI * 1.05, Math.PI * 1.95); g.lineTo(9, -44); g.lineTo(-7, -44); g.closePath(); paint("#9aa3b5");
+      g.beginPath(); g.moveTo(-2, -54); g.quadraticCurveTo(-10, -62, -16, -56 + wave * 0.3); g.lineTo(-6, -52); g.closePath(); paint(f.body);
+    } else {
+      g.beginPath(); g.arc(1, -46, 8.8, Math.PI * 0.95, Math.PI * 2.05); g.lineTo(9, -42); g.lineTo(-8, -40); g.closePath(); paint(f.body);
+      g.beginPath(); g.moveTo(-7, -45); g.quadraticCurveTo(-15, -40, -14 - wave, -31); g.lineTo(-9, -38); g.closePath(); paint(shade(f.body, 0.8));
+    }
+    g.fillStyle = O; g.fillRect(5, -46, 2, 3);
+
+    // Arm and weapon: angle 0 points down, negative swings forward.
+    let arm = -0.5 + Math.sin(t / 300) * 0.06;
+    if (atk) {
+      const [move, p] = atk;
+      if (move === "light") arm = mix(-3.0, -0.3, ease(Math.min(1, p * 1.3)));
+      if (move === "heavy") arm = p < 0.45 ? mix(-0.5, 2.6, ease(p / 0.45)) : mix(2.6, -1.7, ease(Math.min(1, (p - 0.45) / 0.3)));
+      if (move === "air") arm = -0.5 - p * Math.PI * 2;
+      if (p > 0.3 && p < 0.95) {
+        const from = move === "heavy" ? 2.6 : move === "air" ? -0.5 : -3.0;
+        g.save(); g.translate(2, -32);
+        g.beginPath();
+        const s0 = Math.PI / 2 + Math.min(from, arm), s1 = Math.PI / 2 + Math.max(from, arm);
+        g.arc(0, 0, 42, s0, s1); g.arc(0, 0, 22, s1, s0, true); g.closePath();
+        g.fillStyle = `rgba(255,255,255,${0.35 * (1 - Math.abs(p - 0.62) / 0.33)})`; g.fill();
+        g.restore();
+      }
+    }
+    g.save(); g.translate(2, -32); g.rotate(arm);
+    g.beginPath(); g.roundRect(-2.8, 0, 5.6, 13, 2.5); paint(f.body);
+    if (f.weapon === "sword") {
+      g.beginPath(); g.moveTo(-1.8, 15); g.lineTo(1.8, 15); g.lineTo(1.8, 40); g.lineTo(0, 44); g.lineTo(-1.8, 40); g.closePath(); paint("#e3e9f2");
+      g.beginPath(); g.roundRect(-6, 12, 12, 3, 1); paint("#d9a93a");
+    } else {
+      g.beginPath(); g.roundRect(-1.6, 8, 3.2, 30, 1); paint("#8a5a3a");
+      g.beginPath(); g.roundRect(-9, 34, 18, 11, 2); paint("#7e8696");
+      g.beginPath(); g.roundRect(-9, 38, 18, 3, 0); g.fillStyle = flash ? "#fff" : f.trim; g.fill();
+    }
+    g.beginPath(); g.arc(0, 13, 3.4, 0, Math.PI * 2); paint(f.skin);
+    g.restore();
+    g.restore();
+
+    // Player tag above the head.
+    const tag = id === "A" ? "P1" : "P2";
+    g.globalAlpha = blink ? 0.45 : 1;
+    g.font = '700 9px "Familjen Grotesk", system-ui, sans-serif'; g.textAlign = "center";
+    g.fillStyle = f.body; g.fillText(tag, x, y - 66);
+    g.beginPath(); g.moveTo(x - 3, y - 62); g.lineTo(x + 3, y - 62); g.lineTo(x, y - 58); g.fill();
+    g.globalAlpha = 1;
+  }
+
+  function arena(t) {
+    const sky = g.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, "#1e2850"); sky.addColorStop(0.45, "#55406f"); sky.addColorStop(0.8, "#d9826b"); sky.addColorStop(1, "#f3b875");
+    g.fillStyle = sky; g.fillRect(0, 0, W, H);
+    for (let i = 0; i < 40; i++) { g.fillStyle = `rgba(255,255,255,${0.25 + 0.5 * rnd(i + 5) * (0.6 + 0.4 * Math.sin(t / 400 + i))})`; g.fillRect(rnd(i) * W, rnd(i + 99) * 90, 1.2, 1.2); }
+    const sun = g.createRadialGradient(300, 200, 6, 300, 200, 90);
+    sun.addColorStop(0, "rgba(255,226,170,0.95)"); sun.addColorStop(0.3, "rgba(255,190,140,0.45)"); sun.addColorStop(1, "rgba(255,170,120,0)");
+    g.fillStyle = sun; g.fillRect(200, 100, 200, 200);
+    const ridge = (base, amp, seed, colour) => {
+      g.beginPath(); g.moveTo(0, H);
+      for (let x = 0; x <= W + 40; x += 36) g.lineTo(x, base - rnd(seed + x) * amp);
+      g.lineTo(W, H); g.closePath(); g.fillStyle = colour; g.fill();
+    };
+    ridge(200, 70, 3, "#4a3a6b"); ridge(232, 50, 7, "#36294f");
+    for (let i = 0; i < 4; i++) {
+      const cx = ((i * 170 + t * 0.012) % (W + 160)) - 80;
+      g.beginPath(); g.ellipse(cx, 70 + (i % 2) * 34, 46, 9, 0, 0, Math.PI * 2); g.fillStyle = "rgba(255,214,200,0.28)"; g.fill();
+    }
+    // Small floating rocks in the distance.
+    for (const [rx, ry, s] of [[70, 118, 1], [508, 96, 0.8]]) {
+      const by = ry + Math.sin(t / 700 + rx) * 3;
+      g.beginPath(); g.moveTo(rx - 22 * s, by); g.lineTo(rx + 22 * s, by); g.lineTo(rx + 6 * s, by + 18 * s); g.lineTo(rx - 4 * s, by + 24 * s); g.closePath(); g.fillStyle = "#3b2e57"; g.fill();
+      rect(rx - 22 * s, by - 3, 44 * s, 4, 2, "#4e8a62");
+    }
+
+    // The main stage: grass, stone, underside with crystals.
+    g.beginPath(); g.moveTo(118, G + 30); g.lineTo(462, G + 30); g.lineTo(410, G + 58); g.lineTo(350, G + 74); g.lineTo(292, G + 96); g.lineTo(240, G + 70); g.lineTo(170, G + 56); g.closePath();
+    g.fillStyle = "#3f3759"; g.fill();
+    g.beginPath(); g.moveTo(292, G + 96); g.lineTo(350, G + 74); g.lineTo(410, G + 58); g.lineTo(462, G + 30); g.lineTo(330, G + 30); g.closePath(); g.fillStyle = "#332c4a"; g.fill();
+    rect(114, G + 5, 352, 27, 2, "#6c6690");
+    for (let row = 0; row < 3; row++) {
+      const yy = G + 5 + row * 9;
+      line(114, yy + 9, 466, yy + 9, "#5a5480");
+      for (let bx = 114 + (row % 2) * 14; bx < 466; bx += 28) line(bx, yy, bx, yy + 9, "#5a5480");
+    }
+    rect(108, G - 1, 364, 7, 3, "#69c26b");
+    rect(108, G + 4, 364, 2, 0, "#3f8a4f");
+    for (let gx = 112; gx < 468; gx += 9) {
+      const h = 3 + rnd(gx) * 4;
+      g.beginPath(); g.moveTo(gx, G); g.lineTo(gx + 2 + Math.sin(t / 500 + gx) * 1, G - h); g.lineTo(gx + 4, G); g.fillStyle = "#4fa35a"; g.fill();
+    }
+    for (const [cx, cy] of [[200, G + 44], [318, G + 62], [400, G + 50]]) {
+      const glow = g.createRadialGradient(cx, cy, 1, cx, cy, 16);
+      glow.addColorStop(0, "rgba(130,230,255,0.6)"); glow.addColorStop(1, "rgba(130,230,255,0)");
+      g.fillStyle = glow; g.fillRect(cx - 16, cy - 16, 32, 32);
+      g.beginPath(); g.moveTo(cx, cy - 7); g.lineTo(cx + 4, cy); g.lineTo(cx, cy + 9); g.lineTo(cx - 4, cy); g.closePath(); g.fillStyle = "#8fe6ff"; g.fill();
+    }
+    // Torches at both ends.
+    for (const tx of [124, 456]) {
+      rect(tx - 2, G - 26, 4, 26, 1, "#4a3a2e");
+      const fl = 1 + Math.sin(t / 70 + tx) * 0.15 + Math.sin(t / 33 + tx) * 0.08;
+      const glow = g.createRadialGradient(tx, G - 32, 1, tx, G - 32, 30);
+      glow.addColorStop(0, "rgba(255,190,90,0.55)"); glow.addColorStop(1, "rgba(255,150,60,0)");
+      g.fillStyle = glow; g.fillRect(tx - 30, G - 62, 60, 60);
+      g.beginPath(); g.moveTo(tx, G - 26 - 13 * fl); g.quadraticCurveTo(tx + 6, G - 30, tx, G - 25); g.quadraticCurveTo(tx - 6, G - 30, tx, G - 26 - 13 * fl);
+      g.fillStyle = "#ffb347"; g.fill();
+      g.beginPath(); g.arc(tx, G - 29, 2.4, 0, Math.PI * 2); g.fillStyle = "#fff1c4"; g.fill();
+    }
+    // Two floating wooden platforms.
+    for (const px of [176, 326]) {
+      line(px + 10, PLAT + 7, px + 14, PLAT + 18, "#5a3d2a", 2); line(px + 70, PLAT + 7, px + 66, PLAT + 18, "#5a3d2a", 2);
+      rect(px, PLAT, 80, 8, 2, "#94633f");
+      rect(px, PLAT, 80, 3, 2, "#c08a5c");
+      for (let k = 1; k < 4; k++) line(px + k * 20, PLAT + 3, px + k * 20, PLAT + 8, "#6e4a30");
+    }
+  }
+
+  function hud(t) {
+    const card = (id, x) => {
+      const f = FIGHTERS[id], d = damage(id, t);
+      const stocks = id === "B" && t > BLAST ? 2 : 3;
+      rect(x, 24, 98, 38, 6, "rgba(14,12,26,0.74)");
+      rect(x, 24, 4, 38, 2, f.body);
+      g.beginPath(); g.arc(x + 20, 43, 11, 0, Math.PI * 2); g.fillStyle = f.body; g.fill();
+      g.beginPath(); g.arc(x + 20, 45, 6, 0, Math.PI * 2); g.fillStyle = f.skin; g.fill();
+      g.font = '700 9px "Familjen Grotesk", system-ui, sans-serif'; g.textAlign = "left"; g.fillStyle = "#cfd0e2";
+      g.fillText(f.name, x + 36, 36);
+      for (let s = 0; s < 3; s++) { g.beginPath(); g.arc(x + 70 + s * 8, 33, 2.6, 0, Math.PI * 2); g.fillStyle = s < stocks ? f.body : "rgba(255,255,255,0.18)"; g.fill(); }
+      const hit = EVENTS.find(([at, who]) => who !== id && t >= at && t < at + 260);
+      const pop = hit ? 1 + 0.35 * (1 - (t - hit[0]) / 260) : 1;
+      const colour = d >= 110 ? "#ff4b4b" : d >= 85 ? "#ff8a4c" : d >= 55 ? "#ffd166" : "#ffffff";
+      g.save(); g.translate(x + 36, 56); g.scale(pop, pop);
+      g.font = '700 18px "Familjen Grotesk", system-ui, sans-serif';
+      g.lineWidth = 3; g.strokeStyle = "#15131c"; g.strokeText(`${d}%`, 0, 0);
+      g.fillStyle = colour; g.fillText(`${d}%`, 0, 0);
+      g.restore();
+    };
+    card("A", 176); card("B", 286);
+    const left = 151 - Math.floor(t / 1000);
+    g.font = '700 11px "Familjen Grotesk", system-ui, sans-serif'; g.textAlign = "right"; g.fillStyle = "#ffffff";
+    g.fillText(`${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`, 474, 38);
+  }
+
+  function game(t) {
+    const shakeHit = EVENTS.find(([at, , move]) => move === "heavy" && t >= at && t < at + 260);
+    const amp = shakeHit ? 4 * (1 - (t - shakeHit[0]) / 260) : 0;
+    g.save();
+    g.translate(Math.sin(t / 9) * amp, Math.cos(t / 11) * amp);
+    arena(t);
+    const a = position("A", t), b = position("B", t);
+    // The one being hit draws first, so the attacker's swing is on top.
+    const order = attackOf("B", t) ? ["A", "B"] : ["B", "A"];
+    for (const id of order) drawFighter(id, t, id === "A" ? b : a);
+
+    // Hit sparks.
+    for (const [at, who, move] of EVENTS) {
+      const dt = t - at;
+      if (dt < 0 || dt > 280) continue;
+      const [vx, vy] = position(who === "A" ? "B" : "A", at);
+      const k = dt / 280, big = move === "heavy" ? 1.8 : 1;
+      g.strokeStyle = `rgba(255,244,200,${1 - k})`; g.lineWidth = 2;
+      for (let i = 0; i < 9; i++) {
+        const ang = rnd(at + i) * Math.PI * 2, r0 = 6 + k * 10 * big, r1 = r0 + (10 + rnd(at + i * 3) * 10) * big * (1 - k * 0.5);
+        line(vx + Math.cos(ang) * r0, vy - 26 + Math.sin(ang) * r0, vx + Math.cos(ang) * r1, vy - 26 + Math.sin(ang) * r1, `rgba(255,${200 + i * 6},120,${1 - k})`, 2);
+      }
+      g.beginPath(); g.arc(vx, vy - 26, (8 + k * 26) * big, 0, Math.PI * 2); g.strokeStyle = `rgba(255,255,255,${0.8 * (1 - k)})`; g.lineWidth = 2; g.stroke();
+    }
+    // Knockout: a trail behind the launched fighter, then a burst at the top edge.
+    if (t > KO && t < BLAST) {
+      for (let i = 1; i < 8; i++) {
+        const [px, py] = position("B", t - i * 30);
+        g.beginPath(); g.arc(px, py - 26, 9 - i, 0, Math.PI * 2); g.fillStyle = `rgba(216,243,238,${0.5 - i * 0.06})`; g.fill();
+      }
+    }
+    if (t > BLAST && t < BLAST + 700) {
+      const k = (t - BLAST) / 700, bx = 446;
+      for (let i = 0; i < 7; i++) {
+        const ang = Math.PI / 2 + (i - 3) * 0.22, len = 220 * Math.min(1, k * 3) * (0.7 + rnd(i) * 0.4), wdt = 0.07;
+        g.beginPath(); g.moveTo(bx, 0);
+        g.lineTo(bx + Math.cos(ang - wdt) * len, Math.sin(ang - wdt) * len);
+        g.lineTo(bx + Math.cos(ang + wdt) * len, Math.sin(ang + wdt) * len);
+        g.closePath(); g.fillStyle = i % 2 ? `rgba(47,156,149,${0.8 * (1 - k)})` : `rgba(230,255,250,${0.85 * (1 - k)})`; g.fill();
+      }
+      g.beginPath(); g.arc(bx, 0, 30 + k * 60, 0, Math.PI); g.fillStyle = `rgba(255,255,255,${0.6 * (1 - k)})`; g.fill();
+    }
+    // Respawn: a ring of light where the fighter comes back.
+    if (t > RESPAWN && t < LAND + 300) {
+      const k = span(t, [RESPAWN, LAND + 300]);
+      g.beginPath(); g.ellipse(420, G, 26 * (1 - k * 0.3), 6, 0, 0, Math.PI * 2); g.strokeStyle = `rgba(150,255,240,${0.8 * (1 - k)})`; g.lineWidth = 2; g.stroke();
+    }
+    g.restore();
+    if (t > KO && t < KO + 160) { g.fillStyle = `rgba(255,255,255,${0.35 * (1 - (t - KO) / 160)})`; g.fillRect(0, 0, W, H); }
+    hud(t);
+  }
+
+  const SCENES = [
+    ["Car animation", car],
+    ["Landing page", website],
+    ["greet.rs", code],
+    ["Sky Arena", game],
+  ];
+  function drawScene(n, t) {
+    if (checked !== n) {
+      checked = n;
+      $("title").textContent = SCENES[n][0];
+    }
+    dark = getComputedStyle(document.documentElement).colorScheme.includes("dark");
+    g.setTransform(2, 0, 0, 2, 0, 0);
+    SCENES[n][1](t);
+  }
+
+  function render(t, scene) {
+    drawScene(scene, t);
+
+    // The area: dragged bigger by its bottom-right corner.
+    const d = ease(span(t, T.drag));
+    const a = { x: START.x, y: START.y, w: Math.round(mix(START.w, END.w, d)), h: Math.round(mix(START.h, END.h, d)) };
+    const right = a.x + a.w, bottom = a.y + a.h;
+
+    // Red while live: fades in as the circle grows, out as it shrinks.
+    const growStart = T.click + ARM;
+    const red = t < T.stop ? span(t, [growStart, growStart + FADE]) : 1 - span(t, [T.stop, T.stop + FADE]);
+    const out = Math.min(span(t, [0, 250]), 1 - span(t, T.fadeOut));
+
+    place($("dim"), a.x, a.y, a.w, a.h);
+    place($("band"), a.x - BAND, a.y - BAND, a.w + 2 * BAND - 4, a.h + 2 * BAND - 4);
+    $("band").style.borderColor = rgb(red);
+    const idleLook = t < growStart;
+    [[a.x - BAND, a.y - BAND], [right + BAND - HANDLE, a.y - BAND], [a.x - BAND, bottom + BAND - HANDLE], [right + BAND - HANDLE, bottom + BAND - HANDLE]]
+      .forEach(([hx, hy], i) => { const h = $("h" + i); place(h, hx, hy, HANDLE, HANDLE); h.hidden = !idleLook; });
+    const barX = right + BAND - BAR_W, barY = bottom + BAND + GAP;
+    bar.style.left = barX + "px";
+    bar.style.top = barY + "px";
+    stage.style.setProperty("--fade", out);
+    for (const id of ["dim", "band", "bar", "h0", "h1", "h2", "h3"]) $(id).style.opacity = out;
+
+    // The bar.
+    const pressed = (when) => t >= when - 60 && t < when + 140;
+    if (t < T.recording) {
+      setBar("idle", { size: `${a.w} × ${a.h}`, press: pressed(T.click) ? "rec" : "" });
+      $("size").textContent = `${a.w} × ${a.h}`;
+      const wipe = span(t, [T.click, T.click + ARM]);
+      const dot = $("dot");
+      dot.style.webkitMaskImage = dot.style.maskImage = wipe > 0 && wipe < 1 ? `conic-gradient(transparent ${wipe}turn, #000 0)` : "";
+      dot.style.visibility = wipe >= 1 ? "hidden" : "";
+      setCircle(Math.max(0, ease(span(t, [growStart, growStart + GROW])) * 180));
+    } else if (t < T.stop + 120) {
+      setBar("live", { press: pressed(T.stop) ? "stop" : "" });
+      setCircle(180);
+      const s = Math.floor((t - T.recording) / 1000);
+      $("time").textContent = `0:0${s}`;
+    } else if (t < T.encoded) {
+      setBar("encoding", {});
+      setCircle(180 * (1 - ease(span(t, [T.stop + 120, T.stop + 120 + SHRINK]))));
+      const p = span(t, [T.stop + 300, T.encoded - 100]);
+      $("pct").textContent = Math.round(p * 100) + "%";
+    } else {
+      setBar("done", {});
+    }
+
+    // The pointer.
+    const corner = [right + BAND - 1, bottom + BAND - 1];
+    const rec = [barX + REC[0] + 2, barY + REC[1] + 2];
+    const stop = [barX + 182, barY + 20];
+    const legs = [
+      [[600, 420], [START.x + START.w + 1, START.y + START.h + 1], T.toCorner],
+      [null, rec, T.toRecord],
+      [null, stop, T.toStop],
+      [null, [560, 412], T.away],
+    ];
+    let pos = legs[0][0];
+    for (const [i, [from, to, when]] of legs.entries()) {
+      // The pointer holds the corner for the whole drag, then leaves from where it let go.
+      if (i === 1 && t >= T.drag[0]) pos = corner;
+      const p = ease(span(t, when));
+      const a0 = from || pos;
+      if (t >= when[0]) pos = [mix(a0[0], to[0], p), mix(a0[1], to[1], p)];
+    }
+    const down = (t >= T.drag[0] - 80 && t < T.drag[1] + 60) || pressed(T.click) || pressed(T.stop);
+    cursor.style.transform = `translate(${pos[0] - 2}px, ${pos[1] - 2}px) scale(${down ? 0.88 : 1})`;
+    cursor.style.opacity = out;
+  }
+
+  function fit() { stage.style.transform = `scale(${box.clientWidth / 640})`; }
+  new ResizeObserver(fit).observe(box);
+  fit();
+
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    render(5200, 0);
+  } else {
+    let t0 = performance.now();
+    const loop = (now) => {
+      // Ask for the next frame first, so one bad frame cannot stop the loop.
+      requestAnimationFrame(loop);
+      const n = Math.floor((now - t0) / T.end);
+      try {
+        render((now - t0) % T.end, n % SCENES.length);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    requestAnimationFrame(loop);
+  }
+
+  // Downloads: link the latest release's files once there is one.
+  fetch("https://api.github.com/repos/sandrogekeler/Inb/releases/latest")
+    .then((r) => (r.ok ? r.json() : null))
+    .then((rel) => {
+      if (!rel) return;
+      const find = (re) => (rel.assets || []).find((f) => re.test(f.name));
+      const win = find(/win/i), mac = find(/mac|darwin/i);
+      for (const [el, asset] of [[$("dl-win"), win], [$("dl-mac"), mac]]) {
+        el.href = asset ? asset.browser_download_url : rel.html_url;
+        el.removeAttribute("aria-disabled");
+      }
+    })
+    .catch(() => {});
+})();
+</script>
+</body>
+</html>

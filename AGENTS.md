@@ -33,6 +33,8 @@ not load that directory itself reads `working.md`, `writing.md` and
 - `examples/`: `capture` and `clipboard` try one platform part on its own;
   `encode` encodes a synthetic 30 s recording.
 - `docs/testing.md`: how to try a pull request on Windows and macOS.
+- `site/`: the download page, plain HTML with no build step. Its demo reads
+  sizes, colours and timings from `spec.rs` and `bar.rs` by hand: change both together.
 - `agent_docs/`: the roadmap, the health and security checklists and the
   dependency inventory.
 
