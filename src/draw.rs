@@ -16,9 +16,12 @@ use crate::geometry::{Rect, Side};
 use crate::session::Session;
 use crate::spec::*;
 
-/// The pixel size of a window `rect` points large at `scale`.
+/// The pixel size of a window `rect` points large at `scale`. Each side is
+/// rounded to the nearest pixel, so two windows that touch in points touch in
+/// pixels too, without a gap or an overlap.
 pub fn pixel_size(rect: Rect, scale: f64) -> (u32, u32) {
-    (((rect.w * scale).ceil() as u32).max(1), ((rect.h * scale).ceil() as u32).max(1))
+    let span = |start: f64, len: f64| ((start + len) * scale).round() - (start * scale).round();
+    (span(rect.x, rect.w).max(1.0) as u32, span(rect.y, rect.h).max(1.0) as u32)
 }
 
 fn color(c: Rgba) -> Color {
@@ -113,6 +116,9 @@ mod tests {
         assert_eq!(pixel_size(r, 2.0), (21, 6));
         let p = edge(Side::Top, r, 0.0, true, 1.5);
         assert_eq!((p.width(), p.height()), (16, 5));
+        // Two dims meeting at x = 100.4 points at 125%: no shared or missing pixel.
+        let (left, right) = (Rect::new(0.0, 0.0, 100.4, 10.0), Rect::new(100.4, 0.0, 50.3, 10.0));
+        assert_eq!(pixel_size(left, 1.25).0 + pixel_size(right, 1.25).0, (150.7_f64 * 1.25).round() as u32);
         let session = Session::default();
         let area = Rect::new(0.0, 0.0, 640.0, 400.0);
         assert_eq!(bar(&session, Duration::ZERO, area, None, 2.0).width(), 448);
